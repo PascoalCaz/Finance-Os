@@ -5,8 +5,6 @@ services:
     # Mas precisamos de persistência para o banco de dados
     volumes:
       - finance_data:/app/data
-    ports:
-      - "8000:8000"
     restart: always
 
 volumes:
