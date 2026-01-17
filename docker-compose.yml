@@ -3,10 +3,15 @@ version: '3.8'
 services:
   web:
     build: .
+    # Em produção (EasyPanel), não sobrescreva o código com "."
+    # Mas precisamos de persistência para o banco de dados
     volumes:
-      - .:/app
+      - finance_data:/app/data
     ports:
       - "8000:8000"
     env_file:
       - .env
     restart: always
+
+volumes:
+  finance_data:

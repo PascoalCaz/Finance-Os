@@ -23,8 +23,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar o restante do código
 COPY . /app/
 
-# Criar volume para o banco de dados SQLite
-RUN mkdir -p /app/data
+# Criar diretório para o banco de dados e garantir permissões
+RUN mkdir -p /app/data && chmod -R 777 /app/data
 # Ajustar o settings.py para usar /app/data/db.sqlite3 se necessário
 # Mas por agora usaremos o local padrão e montaremos o volume
 

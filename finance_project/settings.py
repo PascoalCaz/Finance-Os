@@ -79,7 +79,8 @@ WSGI_APPLICATION = 'finance_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # Em Docker, montaremos um volume em /app/data para persistência
+        'NAME': BASE_DIR / 'data' / 'db.sqlite3',
     }
 }
 
