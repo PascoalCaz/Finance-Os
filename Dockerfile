@@ -1,5 +1,5 @@
-# Usar imagem oficial do Python slim
-FROM python:3.11-slim
+# Usar imagem oficial do Python slim (Django 6.0 requer Python 3.12+)
+FROM python:3.12-slim
 
 # Evitar que o Python gere arquivos .pyc e garantir output em tempo real
 ENV PYTHONDONTWRITEBYTECODE 1
