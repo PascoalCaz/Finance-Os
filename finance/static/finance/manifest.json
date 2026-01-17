@@ -1,0 +1,16 @@
+{
+  "name": "FinanceOS",
+  "short_name": "FinanceOS",
+  "description": "Gestão Financeira Inteligente com IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/static/finance/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

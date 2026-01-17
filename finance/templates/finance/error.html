@@ -1,0 +1,10 @@
+<div class="card-dense bg-rose-50 border-rose-100 p-8 text-center animate-in fade-in duration-500">
+    <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+    </div>
+    <h3 class="text-sm font-bold text-rose-800 mb-2">Erro de Processamento</h3>
+    <p class="text-xs text-rose-600 mb-6 font-medium">{{ error }}</p>
+    <button hx-get="/dashboard/" hx-target="#main-content" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-rose-700 transition-colors shadow-sm">
+        Voltar ao Início
+    </button>
+</div>

@@ -1,0 +1,295 @@
+{% extends "finance/base.html" %}
+{% load finance_tags l10n %}
+
+{% block content %}
+<div data-title="Dashboard Analítico" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
+    
+    <!-- Header de KPIs -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Saldo Total -->
+        <div class="card-dense flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Saldo Atual</p>
+                    <p class="text-xl font-bold text-slate-900">{{ balance|moeda_kz }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Total</span>
+            </div>
+        </div>
+
+        <!-- Receitas -->
+        <div class="card-dense flex items-center justify-between border-l-4 border-l-emerald-500">
+            <div class="flex items-center space-x-4">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path></svg>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Receitas Brutas</p>
+                    <p class="text-xl font-bold text-emerald-600">{{ income|moeda_kz }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">+ Global</span>
+            </div>
+        </div>
+
+        <!-- Despesas -->
+        <div class="card-dense flex items-center justify-between border-l-4 border-l-rose-500">
+            <div class="flex items-center space-x-4">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path></svg>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Despesas Totais</p>
+                    <p class="text-xl font-bold text-rose-600">{{ expenses|moeda_kz }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">- Global</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Gráficos Analíticos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Gráfico de Área: Evolução do Património -->
+        <div class="card-dense flex flex-col h-[400px]">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 id="evolution-title" class="text-sm font-bold text-slate-800">Evolução do Saldo</h3>
+                    <p class="text-[10px] text-slate-400 font-medium">Análise dos últimos 6 meses</p>
+                </div>
+                
+                <!-- Filtros do Gráfico -->
+                <div class="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
+                    <button onclick="updateEvolutionChart('evolution', this)" class="chart-filter-btn active-filter px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all">Património</button>
+                    <button onclick="updateEvolutionChart('income', this)" class="chart-filter-btn px-2 py-1 text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Receitas</button>
+                    <button onclick="updateEvolutionChart('expenses', this)" class="chart-filter-btn px-2 py-1 text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Despesas</button>
+                    <button onclick="updateEvolutionChart('variation', this)" class="chart-filter-btn px-2 py-1 text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Variação</button>
+                </div>
+            </div>
+            <div class="flex-1 relative">
+                <canvas id="evolutionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico de Barras: Comparativo Mensal -->
+        <div class="card-dense flex flex-col h-[400px]">
+             <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800">Fluxo Mensal (Receitas vs Despesas)</h3>
+                    <p class="text-[10px] text-slate-400 font-medium">Comparativo detalhado por período</p>
+                </div>
+                <!-- Filtros de Tempo (Fluxo) -->
+                <div class="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
+                    <a href="?period=year" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'year' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Ano</a>
+                    <a href="?period=month" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'month' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Mês</a>
+                    <a href="?period=week" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'week' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Sem</a>
+                    <a href="?period=day" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'day' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Dia</a>
+                </div>
+            </div>
+            <div class="flex-1 relative">
+                <canvas id="flowChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terceira Fila de Análise -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Gráfico Donut: Categorias -->
+        <div class="card-dense flex flex-col h-[350px]">
+            <h3 class="text-sm font-bold text-slate-800 mb-6">Distribuição por Categoria</h3>
+            <div class="flex-1 relative">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Lista de Atividade Recente -->
+        <div class="lg:col-span-2 card-dense flex flex-col overflow-hidden">
+            <h3 class="text-sm font-bold text-slate-800 mb-4">Últimas Transações</h3>
+            <div class="flex-1 overflow-y-auto pr-2">
+                <div class="space-y-3">
+                    {% for t in recent_transactions %}
+                    <div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 group">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full {% if t.Tipo == 'Receita' %}bg-emerald-50 text-emerald-600{% else %}bg-rose-50 text-rose-600{% endif %} flex items-center justify-center group-hover:scale-110 transition-transform">
+                                {% if t.Tipo == 'Receita' %}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path></svg>
+                                {% else %}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path></svg>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-800">{{ t.Descricao }}</p>
+                                <p class="text-[10px] text-slate-400">{{ t.Data }}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs font-bold {% if t.Tipo == 'Receita' %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                            {% if t.Tipo == 'Receita' %}+{% else %}-{% endif %}{{ t.Valor|moeda_kz }}
+                        </p>
+                    </div>
+                    {% empty %}
+                    <p class="text-center py-10 text-xs text-slate-400 font-medium italic">Nenhuma atividade recente.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * Inicialização dos Gráficos Analíticos
+     */
+    setTimeout(function() {
+        if (typeof Chart === 'undefined') return;
+
+        // Dados do Backend (Unlocalized)
+        const labels = {{ chart_labels|safe }};
+        const incomeData = {{ chart_income|safe }};
+        const expenseData = {{ chart_expenses|safe }};
+        const evolutionData = {{ chart_evolution|safe }};
+        const variationData = {{ chart_variation|safe }};
+        
+        const categoriesLabels = [{% for cat in categories_summary.keys %}"{{ cat|escapejs }}",{% endfor %}];
+        const categoriesValues = [{% for val in categories_summary.values %}{{ val|unlocalize }},{% endfor %}];
+
+        // 1. Gráfico de Área (Evolução do Saldo)
+        window.evolutionChartInstance = new Chart(document.getElementById('evolutionChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Património Acumulado',
+                    data: evolutionData,
+                    fill: true,
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    y: { beginAtZero: false, grid: { color: '#f8fafc' }, ticks: { font: { size: 9 } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+                }
+            }
+        });
+
+        // Função Global para Atualizar o Gráfico de Evolução
+        window.updateEvolutionChart = function(type, btn) {
+            const chart = window.evolutionChartInstance;
+            if (!chart) return;
+
+            // Atualizar Estilo dos Botões
+            document.querySelectorAll('.chart-filter-btn').forEach(b => {
+                b.classList.remove('active-filter', 'bg-white', 'text-blue-600', 'shadow-sm');
+                b.classList.add('text-slate-400');
+            });
+            btn.classList.add('active-filter', 'bg-white', 'text-blue-600', 'shadow-sm');
+            btn.classList.remove('text-slate-400');
+
+            let newData = [];
+            let newLabel = '';
+            let newColor = '#3b82f6';
+            let newBg = 'rgba(59, 130, 246, 0.05)';
+            let titleText = '';
+
+            switch(type) {
+                case 'income':
+                    newData = incomeData;
+                    newLabel = 'Receitas Mensais';
+                    newColor = '#10b981';
+                    newBg = 'rgba(16, 185, 129, 0.05)';
+                    titleText = 'Evolução de Receitas';
+                    break;
+                case 'expenses':
+                    newData = expenseData;
+                    newLabel = 'Despesas Mensais';
+                    newColor = '#f43f5e';
+                    newBg = 'rgba(244, 63, 94, 0.05)';
+                    titleText = 'Evolução de Despesas';
+                    break;
+                case 'variation':
+                    newData = variationData;
+                    newLabel = 'Variação Líquida';
+                    newColor = '#8b5cf6';
+                    newBg = 'rgba(139, 92, 246, 0.05)';
+                    titleText = 'Variação Financeira Mensal';
+                    break;
+                default:
+                    newData = evolutionData;
+                    newLabel = 'Património Acumulado';
+                    newColor = '#3b82f6';
+                    newBg = 'rgba(59, 130, 246, 0.05)';
+                    titleText = 'Evolução do Saldo';
+            }
+
+            chart.data.datasets[0].data = newData;
+            chart.data.datasets[0].label = newLabel;
+            chart.data.datasets[0].borderColor = newColor;
+            chart.data.datasets[0].backgroundColor = newBg;
+            chart.data.datasets[0].pointBorderColor = newColor;
+            
+            document.getElementById('evolution-title').innerText = titleText;
+            chart.update('active');
+        };
+
+        // 2. Gráfico de Barras (Comparativo Fluxo)
+        new Chart(document.getElementById('flowChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Entradas', data: incomeData, backgroundColor: '#10b981', borderRadius: 4, barThickness: 12 },
+                    { label: 'Saídas', data: expenseData, backgroundColor: '#f43f5e', borderRadius: 4, barThickness: 12 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } },
+                scales: { 
+                    y: { grid: { color: '#f8fafc' }, ticks: { font: { size: 9 } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+                }
+            }
+        });
+
+        // 3. Gráfico Donut (Categorias)
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'doughnut',
+            data: {
+                labels: categoriesLabels,
+                datasets: [{
+                    data: categoriesValues,
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#06b6d4'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 }, padding: 15 } } 
+                },
+                cutout: '75%'
+            }
+        });
+
+    }, 200);
+</script>
+{% endblock %}

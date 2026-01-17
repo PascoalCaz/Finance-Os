@@ -1,0 +1,402 @@
+{% load static %}{% if not request.htmx %}
+<!doctype html>
+<html lang="pt-pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinanceOS - Gestão Financeira Inteligente</title>
+
+    <!-- PWA e Mobile Meta Tags -->
+    <link rel="manifest" href="{% static 'finance/manifest.json' %}" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FinanceOS" />
+    <link rel="apple-touch-icon" href="{% static 'finance/icon.png' %}" />
+
+    <!-- Scripts e Estilos -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      // Registo de Service Worker para PWA
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("{% static 'finance/service-worker.js' %}")
+            .then((reg) => console.log("SW Registered"))
+            .catch((err) => console.log("SW Error", err));
+        });
+      }
+    </script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              heading: ["Outfit", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #fafbfc;
+      }
+      .font-heading {
+        font-family: "Outfit", sans-serif;
+      }
+
+      /* HTMX Indicator */
+      .htmx-indicator {
+        display: none;
+      }
+      .htmx-request .htmx-indicator {
+        display: block;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+      }
+
+      /* Custom UI */
+      .glass-header {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .card-dense {
+        padding: 1.25rem;
+        border-radius: 1rem;
+        background: white;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      }
+    </style>
+  </head>
+  <body class="text-slate-900 min-h-screen flex overflow-x-hidden">
+    <!-- Sidebar -->
+    <aside
+      class="w-64 border-r border-slate-100 bg-white flex-shrink-0 flex flex-col hidden lg:flex h-screen sticky top-0"
+    >
+      <div class="h-16 flex items-center px-6">
+        <div
+          class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold mr-3"
+        >
+          F
+        </div>
+        <span
+          class="text-lg font-bold tracking-tight text-slate-800 font-heading"
+          >FinanceOS</span
+        >
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        <a
+          href="/"
+          hx-get="/dashboard/"
+          hx-target="#main-content"
+          hx-push-url="true"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            ></path>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a
+          href="/transactions/"
+          hx-get="/transactions/"
+          hx-target="#main-content"
+          hx-push-url="true"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2v4h-6V5z"
+            ></path>
+          </svg>
+          <span>Transações</span>
+        </a>
+        <a
+          href="/categories/"
+          hx-get="/categories/"
+          hx-target="#main-content"
+          hx-push-url="true"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+            ></path>
+          </svg>
+          <span>Categorias</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <header
+        class="h-16 glass-header flex items-center justify-between px-6 z-30"
+      >
+        <h2
+          class="text-md font-bold text-slate-800 font-heading"
+          id="page-title"
+        >
+          Dashboard
+        </h2>
+        <div class="flex items-center space-x-3">
+          <div
+            class="htmx-indicator w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
+          ></div>
+          <div
+            class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 font-bold border border-slate-200"
+          >
+            A
+          </div>
+        </div>
+      </header>
+
+      <div id="main-content" class="flex-1 overflow-y-auto p-6 lg:p-8 pb-32">
+        {% endif %} {% block content %}{% endblock %} {% if not request.htmx %}
+      </div>
+    </div>
+
+    <!-- AI Bar -->
+    <div
+      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] w-full max-w-2xl px-4"
+    >
+      <div
+        class="bg-slate-900 rounded-2xl p-1 shadow-2xl flex items-center relative overflow-hidden"
+      >
+        <form
+          hx-post="/ai/process/"
+          hx-target="#modal-content"
+          hx-indicator="#ai-loading-global"
+          enctype="multipart/form-data"
+          class="flex-1 flex items-center relative z-10"
+        >
+          {% csrf_token %}
+          <div class="pl-4 pr-1 text-blue-400">
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              ></path>
+            </svg>
+          </div>
+          <input
+            type="text"
+            name="ai_text"
+            id="ai-input-field"
+            autocomplete="off"
+            placeholder="Diga: 'Gastei nisto'..."
+            class="flex-1 bg-transparent border-none text-white text-sm focus:ring-0 py-4 outline-none"
+          />
+
+          <!-- Botão de Anexo -->
+          <div class="flex items-center space-x-2 mr-2">
+            <label
+              for="ai-file-upload"
+              class="cursor-pointer p-2 text-slate-400 hover:text-blue-400 transition-colors rounded-lg bg-slate-800/50 border border-slate-700"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                ></path>
+              </svg>
+              <input
+                type="file"
+                id="ai-file-upload"
+                name="ai_file"
+                class="hidden"
+                onchange="updateFileFeedback(this)"
+              />
+            </label>
+          </div>
+
+          <!-- Feedback de Arquivo -->
+          <div id="file-feedback" class="hidden mr-4 animate-pulse">
+            <span class="text-[9px] font-bold text-blue-400 uppercase"
+              >Ficheiro OK</span
+            >
+          </div>
+
+          <!-- Seletor de Modelo -->
+          <div class="flex items-center space-x-2 mr-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
+            <select name="ai_provider" class="bg-transparent border-none text-[9px] font-bold text-slate-400 uppercase tracking-widest focus:ring-0 cursor-pointer outline-none appearance-none">
+              <option value="ollama" {% if request.session.ai_provider == 'ollama' %}selected{% endif %}>Ollama</option>
+              <option value="deepseek" {% if request.session.ai_provider == 'deepseek' or not request.session.ai_provider %}selected{% endif %}>DeepSeek</option>
+            </select>
+          </div>
+
+          <!-- Toggle Auto-Reg -->
+          <div
+            class="flex items-center space-x-2 mr-4 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700"
+          >
+            <span
+              class="text-[9px] font-bold text-slate-400 uppercase tracking-widest"
+              >Auto</span
+            >
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="ai_auto"
+                value="true"
+                class="sr-only peer"
+              />
+              <div
+                class="w-7 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"
+              ></div>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            class="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold mr-1 hover:bg-blue-500 transition-colors"
+          >
+            Processar
+          </button>
+        </form>
+        <div
+          id="ai-loading-global"
+          class="htmx-indicator absolute inset-0 bg-slate-900/90 flex items-center justify-center space-x-3"
+        >
+          <div
+            class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"
+          ></div>
+          <span class="text-xs font-bold text-white uppercase tracking-widest"
+            >A IA está a processar...</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div
+      id="modal-container"
+      class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        onclick="closeModal()"
+      ></div>
+      <div
+        id="modal-content"
+        class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
+      ></div>
+    </div>
+
+    <script>
+      // Configuração HTMX para incluir CSRF Token em TODAS as requisições (POST, PUT, DELETE)
+      document.body.addEventListener("htmx:configRequest", (evt) => {
+        evt.detail.headers["X-CSRFToken"] = "{{ csrf_token }}";
+      });
+
+      document.body.addEventListener("htmx:afterSwap", function (evt) {
+        if (evt.detail.target.id === "main-content") {
+          const title =
+            evt.detail.elt.getAttribute("data-title") || "Dashboard";
+          document.getElementById("page-title").innerText = title;
+        }
+      });
+
+      function closeModal() {
+        document.getElementById("modal-container").classList.add("hidden");
+        document.getElementById("modal-content").innerHTML = "";
+      }
+
+      function updateFileFeedback(input) {
+        const feedback = document.getElementById("file-feedback");
+        if (input.files && input.files[0]) {
+          feedback.classList.remove("hidden");
+        } else {
+          feedback.classList.add("hidden");
+        }
+      }
+
+      document.body.addEventListener("htmx:afterOnLoad", function (evt) {
+        if (
+          evt.detail.target.id === "modal-content" &&
+          evt.detail.xhr.status === 200
+        ) {
+          // Se a resposta for um script de recarregamento (auto-reg), não abre o modal
+          if (evt.detail.xhr.responseText.includes("window.location.reload")) {
+            return;
+          }
+          document.getElementById("modal-container").classList.remove("hidden");
+        }
+      });
+
+      // Limpar input após envio
+      document.body.addEventListener("htmx:afterRequest", function (evt) {
+        if (evt.detail.elt.querySelector("#ai-input-field")) {
+          evt.detail.elt.querySelector("#ai-input-field").value = "";
+          // Limpar arquivo também
+          const fileInput = document.getElementById("ai-file-upload");
+          if (fileInput) fileInput.value = "";
+          document.getElementById("file-feedback").classList.add("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>
+{% endif %}

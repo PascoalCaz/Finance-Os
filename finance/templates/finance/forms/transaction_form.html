@@ -1,0 +1,59 @@
+<div class="p-6">
+    <div class="flex items-center space-x-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </div>
+        <div>
+            <h3 class="text-lg font-bold text-slate-900">Nova Transação</h3>
+            <p class="text-xs text-slate-400 font-medium whitespace-nowrap">Preencha os detalhes do movimento</p>
+        </div>
+    </div>
+
+    <!-- Formulário HTMX -->
+    <form hx-post="/transactions/create/" hx-target="#main-content" hx-on::after-request="closeModal()" class="space-y-4">
+        {% csrf_token %}
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data</label>
+                <input type="date" name="Data" required class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tipo</label>
+                <select name="Tipo" required class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none">
+                    <option value="Despesa">Despesa</option>
+                    <option value="Receita">Receita</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Descrição</label>
+            <input type="text" name="Descricao" placeholder="Ex: Pagamento mensal de internet" required 
+                   class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor (Kz)</label>
+                <input type="number" step="0.01" name="Valor" placeholder="0.00" required 
+                       class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs font-bold focus:ring-2 focus:ring-blue-500/20 outline-none">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Categoria</label>
+                <select name="Categoria" required class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none">
+                    <option value="">Selecionar...</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.Id }}">{{ cat.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="pt-4 flex items-center justify-end space-x-3">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">Cancelar</button>
+            <button type="submit" class="px-6 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all">
+                Guardar Transação
+            </button>
+        </div>
+    </form>
+</div>
