@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    volumes:
+      - finance_data:/app/data
+    # Para deploy manual via SSH, precisamos expor a porta
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: always
+
+volumes:
+  finance_data:
