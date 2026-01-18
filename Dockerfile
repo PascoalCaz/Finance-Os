@@ -32,5 +32,4 @@ RUN mkdir -p /app/data && chmod -R 777 /app/data
 EXPOSE 8000
 
 # Script de entrada para migrações e início do servidor
-# Script de entrada para início do servidor (sem migrate automático para agilizar restart)
-CMD python manage.py runserver 0.0.0.0:8000
+CMD python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000
