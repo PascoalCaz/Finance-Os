@@ -40,8 +40,14 @@ class NocoDBClient:
         }
 
     def _get(self, table_id, params=None):
-        """Método genérico para requisições GET."""
+        """Método genérico para requisições GET com limite aumentado."""
         url = f"{self.base_url}/api/v2/tables/{table_id}/records"
+        
+        # Garantir limite de 1000 (máximo do NocoDB) por padrão
+        params = params or {}
+        if 'limit' not in params:
+            params['limit'] = 1000
+            
         response = requests.get(url, headers=self.headers, params=params)
         response.raise_for_status()
         return response.json()
