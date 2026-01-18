@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 import json
 from .services import NocoDBClient, AIClient, DocumentService, EvolutionService
+from .models import AppSettings
 
 # Inicialização dos clientes de serviço
 client = NocoDBClient()
@@ -376,6 +377,24 @@ def ai_confirm(request):
         return redirect('dashboard')
     return redirect('dashboard')
 
+# ==========================================
+# CONFIGURAÇÕES DO SISTEMA
+# ==========================================
+
+@login_required
+def settings_view(request):
+    """Gere as configurações globais da aplicação."""
+    settings = AppSettings.get_settings()
+    
+    if request.method == "POST":
+        settings.whatsapp_instance_id = request.POST.get("whatsapp_instance_id")
+        settings.save()
+        return redirect('settings')
+        
+    return render(request, 'finance/settings_list.html', {
+        'settings': settings
+    })
+
 @csrf_exempt
 def whatsapp_webhook(request):
     """Webhook para processar mensagens da Evolution API (WhatsApp)."""
@@ -388,6 +407,14 @@ def whatsapp_webhook(request):
         
         if event == 'messages.upsert':
             data = payload.get('data', {})
+            instance_id_payload = payload.get('instanceId') or data.get('instanceId')
+            
+            # 1. Verificar Filtro de Instância
+            settings = AppSettings.get_settings()
+            if settings.whatsapp_instance_id and str(instance_id_payload) != str(settings.whatsapp_instance_id):
+                print(f"Webhook Ignorado: Instância {instance_id_payload} não corresponde à configurada ({settings.whatsapp_instance_id})")
+                return JsonResponse({"status": "ignored", "reason": "instance_mismatch"})
+
             message_obj = data.get('message', {})
             key_obj = data.get('key', {})
             

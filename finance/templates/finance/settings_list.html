@@ -1,0 +1,65 @@
+{% extends "finance/base.html" %}
+
+{% block content %}
+<div data-title="Configurações" class="space-y-6 animate-in fade-in duration-500">
+    <div class="mb-4">
+        <h2 class="text-xl font-bold text-slate-800">Definições da Aplicação</h2>
+        <p class="text-xs text-slate-500 font-medium">Configure integrações externas e parâmetros do sistema.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Integração WhatsApp (Evolution API) -->
+        <div class="card-dense">
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.483 8.413-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.499-5.688-1.447l-6.308 1.654zm6.757-3.391c1.5.879 2.965 1.32 4.475 1.321 5.401 0 9.799-4.397 9.799-9.797.002-5.399-4.396-9.796-9.8-9.796-5.403 0-9.8 4.402-9.8 9.8 0 1.706.469 3.376 1.357 4.821l-.991 3.619 3.709-.972zm11.884-7.072c-.273-.136-1.613-.797-1.863-.888-.251-.091-.433-.136-.615.136-.182.274-.707.888-.866 1.071-.16.182-.319.206-.593.07-.273-.136-1.154-.425-2.199-1.357-.812-.724-1.36-1.618-1.52-1.891-.16-.273-.018-.421.118-.558.123-.122.273-.319.41-.479.136-.16.182-.273.273-.456.091-.183.046-.341-.023-.479-.068-.136-.615-1.481-.843-2.029-.222-.533-.467-.459-.615-.467-.139-.008-.299-.01-.459-.01s-.422.06-.643.303c-.221.242-.844.824-.844 2.01s.866 2.333.987 2.496c.121.163 1.705 2.603 4.13 3.65 1.954.843 2.597.838 3.526.703.659-.096 1.614-.66 1.841-1.298.228-.638.228-1.185.16-1.298z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800">WhatsApp (ID da Instância)</h3>
+                    <p class="text-[10px] text-slate-500 font-medium">Apenas mensagens recebidas desta instância serão processadas.</p>
+                </div>
+            </div>
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Instance ID da Evolution API</label>
+                    <input type="text" name="whatsapp_instance_id" 
+                           value="{{ settings.whatsapp_instance_id|default:'' }}"
+                           placeholder="Ex: bc8e8300-4686-4958-9c50-601a54808f76" 
+                           class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs font-mono focus:ring-2 focus:ring-blue-500/20 outline-none">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full flex items-center justify-center space-x-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Guardar Configurações</span>
+                    </button>
+                    {% if settings.whatsapp_instance_id %}
+                    <p class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-600 font-medium leading-relaxed">
+                         🎯 O sistema está configurado para responder apenas à instância selecionada. Todas as outras mensagens recebidas no Webhook serão ignoradas.
+                    </p>
+                    {% else %}
+                     <p class="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[10px] text-amber-600 font-medium leading-relaxed">
+                         ⚠️ Sem Instance ID, o sistema poderá processar mensagens de qualquer instância conectada a este URL de Webhook.
+                    </p>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Outras Configurações (Placeholder) -->
+        <div class="card-dense opacity-60 grayscale cursor-not-allowed">
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-400">Notificações por Email</h3>
+                    <p class="text-[10px] text-slate-300 font-medium italic">Funcionalidade em desenvolvimento...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

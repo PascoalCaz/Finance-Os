@@ -21,4 +21,6 @@ urlpatterns = [
     path('ai/confirm/', views.ai_confirm, name='ai_confirm'),
     # Webhook da Evolution API (WhatsApp)
     path('api/whatsapp/webhook/', views.whatsapp_webhook, name='whatsapp_webhook'),
+    # Configurações do Sistema
+    path('settings/', views.settings_view, name='settings'),
 ]
