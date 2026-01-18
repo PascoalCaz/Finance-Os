@@ -156,14 +156,21 @@
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    /**
-     * Inicialização dos Gráficos Analíticos
-     */
-    setTimeout(function() {
-        if (typeof Chart === 'undefined') return;
+    <script>
+        /**
+         * Inicialização dos Gráficos Analíticos
+         */
+        setTimeout(function() {
+            if (typeof Chart === 'undefined') return;
+
+            // Limpar instâncias anteriores se existirem (para evitar erros de canvas em real-time)
+            const chartsToDestroy = ['evolutionChartInstance', 'flowChartInstance', 'categoryChartInstance'];
+            chartsToDestroy.forEach(id => {
+                if (window[id]) {
+                    window[id].destroy();
+                }
+            });
 
         // Dados do Backend (Unlocalized)
         const labels = {{ chart_labels|safe }};
@@ -264,7 +271,7 @@
         };
 
         // 2. Gráfico de Barras (Comparativo Fluxo)
-        new Chart(document.getElementById('flowChart'), {
+        window.flowChartInstance = new Chart(document.getElementById('flowChart'), {
             type: 'bar',
             data: {
                 labels: labels,
@@ -321,7 +328,7 @@
             }
         };
 
-        new Chart(document.getElementById('categoryChart'), {
+        window.categoryChartInstance = new Chart(document.getElementById('categoryChart'), {
             type: 'doughnut',
             data: {
                 labels: categoriesLabels,
@@ -390,5 +397,19 @@
         });
 
     }, 200);
+
+    // Cleanup chart instances on page refresh/unload
+    window.addEventListener('beforeunload', function() {
+        if (window.evolutionChartInstance) {
+            window.evolutionChartInstance.destroy();
+        }
+        if (window.flowChartInstance) {
+            window.flowChartInstance.destroy();
+        }
+        if (window.categoryChartInstance) {
+            window.categoryChartInstance.destroy();
+        }
+    });
 </script>
+</div>
 {% endblock %}
