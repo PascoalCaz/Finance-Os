@@ -102,9 +102,11 @@
     <!-- Terceira Fila de Análise -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <!-- Gráfico Donut: Categorias -->
-        <div class="card-dense flex flex-col h-[280px] sm:h-[350px]">
-            <h3 class="text-sm font-bold text-slate-800 mb-6">Distribuição por Categoria</h3>
-            <div class="flex-1 relative">
+        <div class="card-dense flex flex-col h-[320px] sm:h-[400px]">
+            <div class="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 class="text-sm font-bold text-slate-800">Distribuição por Categoria</h3>
+            </div>
+            <div class="flex-1 relative min-h-[180px]">
                 <canvas id="categoryChart"></canvas>
             </div>
         </div>
@@ -268,25 +270,108 @@
             }
         });
 
-        // 3. Gráfico Donut (Categorias)
+        // 3. Gráfico Donut (Categorias) - Design Melhorado e Responsivo
+        const totalExpenses = categoriesValues.reduce((a, b) => a + b, 0);
+        
+        // Plugin customizado para escrever no centro do Donut
+        const centerTextPlugin = {
+            id: 'centerText',
+            afterDraw: function(chart) {
+                if (chart.config.type !== 'doughnut') return;
+                const ctx = chart.ctx;
+                const width = chart.width;
+                const height = chart.height;
+                ctx.restore();
+                
+                // Configuração das Fontes
+                const fontSizeLabel = (height / 280).toFixed(2);
+                ctx.font = fontSizeLabel + "em Outfit, sans-serif";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#94a3b8";
+                
+                const label = "DESPESAS";
+                const labelX = Math.round((width - ctx.measureText(label).width) / 2);
+                const labelY = height / 2 - 15;
+                ctx.fillText(label, labelX, labelY);
+
+                const fontSizeValue = (height / 180).toFixed(2);
+                ctx.font = "bold " + fontSizeValue + "em Outfit, sans-serif";
+                ctx.fillStyle = "#0f172a";
+                
+                // Formatação do Valor
+                const valStr = totalExpenses.toLocaleString('pt-PT', { minimumFractionDigits: 0 }) + " Kz";
+                const valX = Math.round((width - ctx.measureText(valStr).width) / 2);
+                const valY = height / 2 + 15;
+                ctx.fillText(valStr, valX, valY);
+                ctx.save();
+            }
+        };
+
         new Chart(document.getElementById('categoryChart'), {
             type: 'doughnut',
             data: {
                 labels: categoriesLabels,
                 datasets: [{
                     data: categoriesValues,
-                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#06b6d4'],
-                    borderWidth: 0,
-                    hoverOffset: 10
+                    backgroundColor: [
+                        '#6366f1', # Indigo
+                        '#ec4899', # Pink
+                        '#f59e0b', # Amber
+                        '#8b5cf6', # Violet
+                        '#10b981', # Emerald
+                        '#0ea5e9', # Sky
+                        '#f43f5e', # Rose
+                        '#64748b'  # Slate
+                    ],
+                    hoverBackgroundColor: [
+                        '#4f46e5', '#db2777', '#d97706', '#7c3aed', 
+                        '#059669', '#0284c7', '#e11d48', '#475569'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 12,
+                    spacing: 2
                 }]
             },
+            plugins: [centerTextPlugin],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '80%',
                 plugins: { 
-                    legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 }, padding: 15 } } 
-                },
-                cutout: '75%'
+                    legend: { 
+                        position: window.innerWidth < 640 ? 'bottom' : 'right',
+                        labels: { 
+                            boxWidth: 8, 
+                            usePointStyle: true,
+                            font: { 
+                                size: 10,
+                                family: 'Inter',
+                                weight: '500'
+                            },
+                            padding: 12
+                        } 
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        padding: 12,
+                        titleFont: { size: 12, family: 'Outfit' },
+                        bodyFont: { size: 12, family: 'Inter' },
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed !== null) {
+                                    const val = context.parsed;
+                                    const pct = ((val / totalExpenses) * 100).toFixed(1);
+                                    label += val.toLocaleString('pt-PT') + " Kz (" + pct + "%)";
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
             }
         });
 

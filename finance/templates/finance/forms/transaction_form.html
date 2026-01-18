@@ -12,7 +12,7 @@
     <!-- Formulário HTMX -->
     <form hx-post="/transactions/create/" hx-target="#main-content" hx-on::after-request="closeModal()" class="space-y-4">
         {% csrf_token %}
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data</label>
                 <input type="date" name="Data" required class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none">
@@ -32,7 +32,7 @@
                    class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none">
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor (Kz)</label>
                 <input type="number" step="0.01" name="Valor" placeholder="0.00" required 
