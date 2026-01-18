@@ -2,10 +2,10 @@
 {% load finance_tags l10n %}
 
 {% block content %}
-<div data-title="Dashboard Analítico" class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
+<div data-title="Dashboard Analítico" class="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
     
     <!-- Header de KPIs -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <!-- Saldo Total -->
         <div class="card-dense flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -56,9 +56,9 @@
     </div>
 
     <!-- Seção de Gráficos Analíticos -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <!-- Gráfico de Área: Evolução do Património -->
-        <div class="card-dense flex flex-col h-[400px]">
+        <div class="card-dense flex flex-col h-[300px] sm:h-[400px]">
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h3 id="evolution-title" class="text-sm font-bold text-slate-800">Evolução do Saldo</h3>
@@ -66,11 +66,11 @@
                 </div>
                 
                 <!-- Filtros do Gráfico -->
-                <div class="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
-                    <button onclick="updateEvolutionChart('evolution', this)" class="chart-filter-btn active-filter px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all">Património</button>
-                    <button onclick="updateEvolutionChart('income', this)" class="chart-filter-btn px-2 py-1 text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Receitas</button>
-                    <button onclick="updateEvolutionChart('expenses', this)" class="chart-filter-btn px-2 py-1 text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Despesas</button>
-                    <button onclick="updateEvolutionChart('variation', this)" class="chart-filter-btn px-2 py-1 text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Variação</button>
+                <div class="flex items-center flex-wrap gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                    <button onclick="updateEvolutionChart('evolution', this)" class="chart-filter-btn active-filter px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg transition-all">Património</button>
+                    <button onclick="updateEvolutionChart('income', this)" class="chart-filter-btn px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Receitas</button>
+                    <button onclick="updateEvolutionChart('expenses', this)" class="chart-filter-btn px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Despesas</button>
+                    <button onclick="updateEvolutionChart('variation', this)" class="chart-filter-btn px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg text-slate-400 hover:text-slate-600 transition-all">Variação</button>
                 </div>
             </div>
             <div class="flex-1 relative">
@@ -79,18 +79,18 @@
         </div>
 
         <!-- Gráfico de Barras: Comparativo Mensal -->
-        <div class="card-dense flex flex-col h-[400px]">
-             <div class="flex items-center justify-between mb-6">
+        <div class="card-dense flex flex-col h-[300px] sm:h-[400px]">
+             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
                 <div>
                     <h3 class="text-sm font-bold text-slate-800">Fluxo Mensal (Receitas vs Despesas)</h3>
                     <p class="text-[10px] text-slate-400 font-medium">Comparativo detalhado por período</p>
                 </div>
                 <!-- Filtros de Tempo (Fluxo) -->
-                <div class="flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
-                    <a href="?period=year" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'year' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Ano</a>
-                    <a href="?period=month" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'month' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Mês</a>
-                    <a href="?period=week" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'week' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Sem</a>
-                    <a href="?period=day" class="px-2 py-1 text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'day' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Dia</a>
+                <div class="flex items-center flex-wrap gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                    <a href="?period=year" class="px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'year' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Ano</a>
+                    <a href="?period=month" class="px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'month' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Mês</a>
+                    <a href="?period=week" class="px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'week' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Sem</a>
+                    <a href="?period=day" class="px-2 py-1 text-[8px] sm:text-[9px] font-bold uppercase rounded-lg transition-all {% if active_period == 'day' %}bg-white text-blue-600 shadow-sm{% else %}text-slate-400 hover:text-slate-600{% endif %}">Dia</a>
                 </div>
             </div>
             <div class="flex-1 relative">
@@ -100,9 +100,9 @@
     </div>
 
     <!-- Terceira Fila de Análise -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <!-- Gráfico Donut: Categorias -->
-        <div class="card-dense flex flex-col h-[350px]">
+        <div class="card-dense flex flex-col h-[280px] sm:h-[350px]">
             <h3 class="text-sm font-bold text-slate-800 mb-6">Distribuição por Categoria</h3>
             <div class="flex-1 relative">
                 <canvas id="categoryChart"></canvas>
