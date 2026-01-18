@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+import django_eventstream
 
 urlpatterns = [
     # Dashboard Principal
@@ -23,4 +24,7 @@ urlpatterns = [
     path('api/whatsapp/webhook/', views.whatsapp_webhook, name='whatsapp_webhook'),
     # Configurações do Sistema
     path('settings/', views.settings_view, name='settings'),
+    
+    # SSE - Real-time Events
+    path('events/', django_eventstream.views.events, {'channels': ['finance']}, name='events'),
 ]

@@ -2,12 +2,15 @@
 {% load finance_tags %}
 
 {% block content %}
-<div id="transactions-refresh-container"
-     hx-get="/transactions/"
-     hx-select="#transactions-refresh-container"
-     hx-trigger="every 15s"
+<div id="transactions-refresh-container" 
+     hx-ext="sse"
+     sse-connect="/events/"
+     sse-swap="message"
+     hx-get="/transactions/" 
+     hx-select="#transactions-refresh-container" 
+     hx-trigger="sse:message" 
      hx-swap="outerHTML"
-     class="space-y-6 animate-in fade-in duration-500">
+     class="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
     
     <!-- Status de Atualização Real-time -->
     <div class="flex items-center space-x-2 px-1 -mb-4">
@@ -15,7 +18,7 @@
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
         </div>
-        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Actualização Automática Ativa</span>
+        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Live: Actualização Instantânea</span>
     </div>
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-2">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">

@@ -5,6 +5,7 @@ from django.http import JsonResponse, HttpResponse
 import json
 from .services import NocoDBClient, AIClient, DocumentService, EvolutionService
 from .models import AppSettings
+from django_eventstream import send_event
 
 # Inicialização dos clientes de serviço
 client = NocoDBClient()
@@ -374,6 +375,10 @@ def ai_confirm(request):
         client.create_transaction(data)
         # Limpa o contexto da sessão após confirmação manual
         request.session['ai_last_doc_text'] = ""
+        
+        # Notificar Real-time via SSE
+        send_event('finance', 'message', {'text': 'refresh'})
+        
         return redirect('dashboard')
     return redirect('dashboard')
 
@@ -407,16 +412,13 @@ def whatsapp_webhook(request):
         
         if event == 'messages.upsert':
             data = payload.get('data', {})
-            # 1. Verificar Filtro de Instância
-            settings = AppSettings.get_settings()
             instance_id_payload = payload.get('instanceId') or data.get('instanceId')
             
+            # 1. Verificar Filtro de Instância
+            settings = AppSettings.get_settings()
             if settings.whatsapp_instance_id and str(instance_id_payload) != str(settings.whatsapp_instance_id):
                 print(f"Webhook Ignorado: Instância {instance_id_payload} não corresponde à configurada ({settings.whatsapp_instance_id})")
                 return JsonResponse({"status": "ignored", "reason": "instance_mismatch"})
-
-            # Obter nome da instância dinamicamente para responder através dela
-            instance_name = payload.get('instance') 
 
             message_obj = data.get('message', {})
             key_obj = data.get('key', {})
@@ -452,21 +454,20 @@ def whatsapp_webhook(request):
                         'Categoria_id': ai_result.get('Categoria_id')
                     })
                     
-                    # 4. Enviar Resposta Dinâmica
+                    # 4. Enviar Resposta
                     evo = EvolutionService()
-                    # Sobrescrever a instância global pela do payload para garantir que responde pela conta certa
-                    if instance_name:
-                        evo.instance = instance_name
-                        
                     msg = (
-                        f"✅ *Gasto Registrado!* 🏹\n\n"
-                        f"📝 *Descrição:* {ai_result.get('Descricao')}\n"
-                        f"💰 *Valor:* {ai_result.get('Valor'):,.2f} Kz\n"
-                        f"📂 *Categoria:* {ai_result.get('Categoria_nome')}\n"
-                        f"📅 *Data:* {ai_result.get('Data')}\n\n"
-                        f"_Sincronizado via FinanceOS AI_ ⚡"
+                        f"✅ *Registro Automático*\n\n"
+                        f"📝 {ai_result.get('Descricao')}\n"
+                        f"💰 {ai_result.get('Valor')} Kz\n"
+                        f"📂 {ai_result.get('Categoria_nome')}\n"
+                        f"📅 {ai_result.get('Data')}\n\n"
+                        f"_Registrado via FinanceOS AI_ 🏹"
                     )
                     evo.send_message(user_number, msg)
+                    
+                    # 5. Notificar Real-time via SSE
+                    send_event('finance', 'message', {'text': 'refresh'})
                     
         return JsonResponse({"status": "success"})
     except Exception as e:
