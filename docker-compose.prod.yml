@@ -5,7 +5,7 @@ services:
       - finance_data:/app/data
     # Para deploy manual via SSH, precisamos expor a porta
     ports:
-      - "8000:8000"
+      - "8000:8001"
     env_file:
       - .env
     restart: always
