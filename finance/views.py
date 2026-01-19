@@ -427,7 +427,7 @@ def whatsapp_webhook(request):
                 return JsonResponse({"status": "ignored"})
 
             remote_jid = key_obj.get('remoteJid', '')
-            user_number = remote_jid.split('@')[0] if remote_jid else ""
+            user_number = remote_jid # Usar o JID completo para garantir entrega (LID/JID)
             
             text_context = ""
             if 'conversation' in message_obj:
@@ -438,13 +438,15 @@ def whatsapp_webhook(request):
                 text_context = message_obj['imageMessage'].get('caption', 'Documento WhatsApp')
             
             if text_context:
+                print(f"Processando mensagem de {user_number}: {text_context[:50]}...")
                 # 1. Buscar categorias
                 categories = client.get_categories().get('list', [])
                 
                 # 2. IA para interpretar
                 ai_result = ai_client.parse_transaction(text_context, categories)
                 
-                if ai_result.get('Status') == 'success':
+                if ai_result and ai_result.get('Status') == 'success':
+                    print(f"IA Sucesso: {ai_result.get('Descricao')} - {ai_result.get('Valor')} Kz")
                     # 3. Registrar Diretamente
                     client.create_transaction({
                         'Data': ai_result.get('Data'),
