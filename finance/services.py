@@ -317,9 +317,11 @@ class EvolutionService:
         self.key = os.getenv('EVOLUTION_API_KEY')
         self.instance = os.getenv('EVOLUTION_INSTANCE')
 
-    def send_message(self, number, message):
-        """Envia mensagem de texto via WhatsApp."""
-        endpoint = f"{self.url}/message/sendText/{self.instance}"
+    def send_message(self, number, message, instance_id=None):
+        """Envia mensagem de texto via WhatsApp (Dinamiza a instância se necessário)."""
+        target_instance = instance_id or self.instance
+        endpoint = f"{self.url}/message/sendText/{target_instance}"
+        
         headers = {'apikey': self.key, 'Content-Type': 'application/json'}
         payload = {
             "number": number,
@@ -327,8 +329,11 @@ class EvolutionService:
             "textMessage": {"text": message}
         }
         try:
+            print(f"Enviando resposta via WhatsApp para {number} (Instância: {target_instance})...")
             response = requests.post(endpoint, json=payload, headers=headers)
-            return response.json()
+            res_json = response.json()
+            print(f"Resposta Evolution: {res_json}")
+            return res_json
         except Exception as e:
-            print(f"Erro Evolution (Send): {e}")
+            print(f"Erro Crítico Evolution (Send): {e}")
             return None

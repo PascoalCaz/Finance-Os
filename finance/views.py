@@ -454,7 +454,7 @@ def whatsapp_webhook(request):
                         'Categoria_id': ai_result.get('Categoria_id')
                     })
                     
-                    # 4. Enviar Resposta
+                    # 4. Enviar Resposta (Usando a instância que recebeu a mensagem)
                     evo = EvolutionService()
                     msg = (
                         f"✅ *Registro Automático*\n\n"
@@ -464,7 +464,7 @@ def whatsapp_webhook(request):
                         f"📅 {ai_result.get('Data')}\n\n"
                         f"_Registrado via FinanceOS AI_ 🏹"
                     )
-                    evo.send_message(user_number, msg)
+                    evo.send_message(user_number, msg, instance_id=instance_id_payload)
                     
                     # 5. Notificar Real-time via SSE
                     send_event('finance', 'message', {'text': 'refresh'})
