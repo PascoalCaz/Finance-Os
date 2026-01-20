@@ -574,12 +574,31 @@ def whatsapp_webhook(request):
                     
                     # 3. Executar Ação baseada na Intenção
                     if intent == "register_transaction":
+                        # Mapear Categoria_nome para Categoria_id
+                        cat_name = data.get('Categoria_nome')
+                        if cat_name and categories_data:
+                            matching_cat = next((c for c in categories_data if c.get('nome','').lower() == cat_name.lower()), None)
+                            if matching_cat:
+                                data['Categoria'] = matching_cat.get('Id')
+                        
+                        # Normalizar Valor
+                        valor_raw = str(data.get('Valor', '0'))
+                        valor_clean = valor_raw.replace('Kz', '').replace(' ', '').replace('.', '').replace(',', '.')
+                        try:
+                            data['Valor'] = float(valor_clean)
+                        except:
+                            data['Valor'] = 0
+
+                        # Garantir Data e Tipo
+                        if not data.get('Data'): data['Data'] = datetime.now().strftime('%Y-%m-%d')
+                        if not data.get('Tipo'): data['Tipo'] = 'Despesa'
+
                         client.create_transaction({
                             'Data': data.get('Data'),
                             'Tipo': data.get('Tipo'),
                             'Valor': data.get('Valor'),
                             'Descricao': data.get('Descricao'),
-                            'Categoria_id': data.get('Categoria_id')
+                            'Categoria': data.get('Categoria')
                         })
                         send_event('finance', 'message', {'text': 'refresh'})
                     

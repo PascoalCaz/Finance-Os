@@ -31,7 +31,7 @@ class ReportService:
             fontSize=18,
             spaceAfter=20,
             alignment=1, # Center
-            textColor=colors.hexColor("#1e293b")
+            textColor=colors.HexColor("#1e293b")
         )
 
         elements.append(Paragraph(f"Relatório Financeiro - {datetime.now().strftime('%d/%m/%Y %H:%M')}", title_style))
@@ -48,7 +48,7 @@ class ReportService:
         
         sm_table = Table(summary_data, colWidths=[150, 150])
         sm_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.hexColor("#334155")),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#334155")),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -74,7 +74,7 @@ class ReportService:
 
         t_table = Table(trans_data, colWidths=[80, 180, 100, 60, 100])
         t_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.hexColor("#475569")),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#475569")),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('ALIGN', (4, 1), (4, -1), 'RIGHT'),
