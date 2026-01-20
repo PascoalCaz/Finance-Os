@@ -19,8 +19,10 @@ if pytesseract:
 else:
     print("Aviso: Pytesseract não encontrado. OCR de imagem desativado.")
 
-# Carrega variáveis de ambiente do arquivo .env
-load_dotenv()
+# Carrega variáveis de ambiente do arquivo .env (Caminho absoluto para maior robustez)
+from pathlib import Path
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 class NocoDBClient:
     """
