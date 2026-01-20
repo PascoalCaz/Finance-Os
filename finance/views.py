@@ -547,16 +547,35 @@ def whatsapp_webhook(request):
                 else:
                     print(f"✅ Usuário '{remote_jid}' Autorizado.")
             
+            # --- Extração de Texto de Mensagens com Mídia ---
             text_context = ""
+            base64_data = payload.get('data', {}).get('base64')
+            
             if 'conversation' in message_obj:
                 text_context = message_obj['conversation']
             elif 'extendedTextMessage' in message_obj:
                 text_context = message_obj['extendedTextMessage'].get('text', '')
             elif 'imageMessage' in message_obj:
-                text_context = message_obj['imageMessage'].get('caption', 'Documento WhatsApp')
+                caption = message_obj['imageMessage'].get('caption', '')
+                text_context = caption
+                if base64_data:
+                    from .services import DocumentService
+                    extracted = DocumentService.extract_text_from_base64(base64_data, 'image/jpeg')
+                    if extracted:
+                        text_context = f"{caption}\n\n[Texto da imagem]:\n{extracted}" if caption else extracted
+            elif 'documentMessage' in message_obj:
+                caption = message_obj['documentMessage'].get('caption', '')
+                text_context = caption
+                mimetype = message_obj['documentMessage'].get('mimetype', '')
+                if base64_data:
+                    from .services import DocumentService
+                    extracted = DocumentService.extract_text_from_base64(base64_data, mimetype)
+                    if extracted:
+                        text_context = f"{caption}\n\n[Conteúdo do documento]:\n{extracted}" if caption else extracted
             
             if text_context:
-                print(f"Processando mensagem de {user_number}: {text_context[:50]}...")
+                text_context = text_context.strip()
+                print(f"Processando mensagem de {user_number}: {text_context[:100]}...")
                 # 1. Obter Contexto e Categorias
                 financial_context = get_financial_context()
                 categories_data = client.get_categories().get('list', [])

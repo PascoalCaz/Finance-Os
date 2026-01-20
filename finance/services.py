@@ -429,6 +429,44 @@ class DocumentService:
         text = pytesseract.image_to_string(img)
         return text
 
+    @staticmethod
+    def extract_text_from_base64(base64_data, mimetype):
+        """
+        Extrai texto de um stream base64 (Imagens ou PDF).
+        """
+        import base64
+        import io
+        
+        if not base64_data:
+            return ""
+
+        try:
+            # Decodificar base64
+            file_bytes = base64.b64decode(base64_data)
+            file_stream = io.BytesIO(file_bytes)
+            
+            if 'pdf' in mimetype:
+                if not pdfplumber:
+                    return "Erro: pdfplumber não instalado."
+                text = ""
+                with pdfplumber.open(file_stream) as pdf:
+                    for page in pdf.pages:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text += page_text + "\n"
+                return text
+            
+            elif 'image' in mimetype or 'jpeg' in mimetype or 'png' in mimetype:
+                if not pytesseract or not Image:
+                    return "Erro: pytesseract ou Pillow não instalados."
+                img = Image.open(file_stream)
+                return pytesseract.image_to_string(img)
+                
+            return ""
+        except Exception as e:
+            print(f"Erro na extração base64 ({mimetype}): {e}")
+            return ""
+
 class EvolutionService:
     """Serviço para integração com WhatsApp via Evolution API."""
     def __init__(self):
