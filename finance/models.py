@@ -11,6 +11,14 @@ class AppSettings(models.Model):
         verbose_name="ID da Instância WhatsApp",
         help_text="ID da instância da Evolution API (ex: bc8e8300-...)"
     )
+    
+    whatsapp_allowed_numbers = models.TextField(
+        blank=True, 
+        null=True,
+        default="244956834375@s.whatsapp.net",
+        verbose_name="Números Permitidos (WhatsApp)",
+        help_text="Lista de JIDs ou números autorizados, separados por vírgula. Ex: 244956834375@s.whatsapp.net, 123456789"
+    )
 
     # Configurações de IA
     AI_PROVIDERS = [

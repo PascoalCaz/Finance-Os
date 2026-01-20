@@ -478,8 +478,9 @@ def settings_view(request):
             settings.gemini_api_key = request.POST.get("gemini_api_key")
             settings.anthropic_api_key = request.POST.get("anthropic_api_key")
         else:
-            # WhatsApp Form (Old structure)
+            # WhatsApp Form
             settings.whatsapp_instance_id = request.POST.get("whatsapp_instance_id")
+            settings.whatsapp_allowed_numbers = request.POST.get("whatsapp_allowed_numbers")
             
         settings.save()
         return redirect('settings')
@@ -533,6 +534,18 @@ def whatsapp_webhook(request):
             remote_jid = key_obj.get('remoteJid', '')
             # Extrair apenas o número (sem @s.whatsapp.net ou @lid)
             user_number = remote_jid.split('@')[0] if remote_jid else ''
+            
+            # --- Filtro de Número Permitido ---
+            allowed_raw = settings.whatsapp_allowed_numbers or ""
+            allowed_list = [n.strip() for n in allowed_raw.replace(',', ' ').split() if n.strip()]
+            
+            # Se a lista não estiver vazia, verificamos se o JID ou o número estão nela
+            if allowed_list:
+                if remote_jid not in allowed_list and user_number not in allowed_list:
+                    print(f"❌ Webhook Ignorado: Usuário '{remote_jid}' não autorizado.")
+                    return JsonResponse({"status": "ignored", "reason": "unauthorized_user"})
+                else:
+                    print(f"✅ Usuário '{remote_jid}' Autorizado.")
             
             text_context = ""
             if 'conversation' in message_obj:
