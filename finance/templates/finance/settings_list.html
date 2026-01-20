@@ -32,11 +32,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Números Permitidos (JIDs)</label>
-                    <textarea name="whatsapp_allowed_numbers" rows="2"
-                              placeholder="244956834375@s.whatsapp.net, 123456789" 
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Números Autorizados (Whitelist)</label>
+                    <textarea name="whatsapp_allowed_numbers" 
+                              placeholder="Ex: 244956834375, 551199999999"
+                              rows="2"
                               class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs font-mono focus:ring-2 focus:ring-blue-500/20 outline-none">{{ settings.whatsapp_allowed_numbers|default:'' }}</textarea>
-                    <p class="text-[9px] text-slate-400 mt-1 italic">Separe os JIDs ou números por vírgula ou espaço.</p>
+                    <p class="text-[9px] text-slate-400 mt-1 italic">Mensagens destes números serão respondidas mesmo se enviadas do próprio bot.</p>
                 </div>
 
                 <div class="pt-2">

@@ -291,18 +291,24 @@ DATA ATUAL: {today}
 ENTRADA DO USUÁRIO: "{text}"
 
 INSTRUÇÕES:
-3. INTENÇÕES ESPECÍFICAS:
+1. Identifique a INTENÇÃO do usuário:
    - "register_transaction": Se ele descrever um gasto ou ganho.
-   - "generate_report": Se ele pedir saldo, gastos do dia/mês ou um resumo textual.
-   - "document_report": Se ele pedir explicitamente um "PDF", "arquivo", "relatório para imprimir" ou "Excel". No campo "data", inclua "format": "pdf" ou "excel".
-   - "analyze_finances": Conselhos ou análise profunda (onde gasta mais, etc).
-   - "manage_categories": Listar ou criar categorias.
-   - "chat": Conversa geral.
+   - "generate_report": Se ele pedir saldo, gastos do dia/mês ou o que tem na conta.
+   - "analyze_finances": Se ele pedir conselhos, perguntar onde gasta mais ou pedir um resumo.
+   - "manage_categories": Se ele pedir para listar categorias ou criar uma nova.
+   - "chat": Se for apenas uma saudação ou conversa geral sem ação financeira.
+
+2. Responda em JSON rigoroso com este formato:
+{{
+    "intent": "register_transaction" | "generate_report" | "analyze_finances" | "manage_categories" | "chat",
+    "data": {{ ... dados específicos da ação como 'Valor', 'Tipo', 'Categoria_nome', 'nova_categoria_nome' ... }},
+    "response": "Uma resposta educada, curta e profissional em português para enviar de volta ao WhatsApp."
+}}
 
 REGRAS DE RESPOSTA:
-- Se for "document_report", no campo "response" diga algo como "Claro! Estou a gerar o seu relatório [PDF/Excel] agora mesmo..."
+- Se for "register_transaction", extraia os dados como antes.
 - Se for "generate_report" ou "analyze_finances", use o CONTEXTO FINANCEIRO fornecido para responder com precisão na chave "response".
-- Seja conciso e use emojis elegantes.
+- Seja conciso e use emojis de forma elegante.
 - Se não entender, defina intent como "chat" e peça para ser mais específico no campo "response"."""
         
         try:
@@ -449,31 +455,4 @@ class EvolutionService:
             return res_json
         except Exception as e:
             print(f"Erro Crítico Evolution (Send): {e}")
-            return None
-
-    def send_media(self, number, file_content, file_name, media_type="document", caption="", instance_id=None):
-        """Envia arquivos (PDF, Excel, Imagem) via WhatsApp."""
-        target_instance = instance_id or self.instance
-        endpoint = f"{self.url}/message/sendMedia/{target_instance}"
-        
-        headers = {'apikey': self.key}
-        # Evolution API exige multipart/form-data para arquivos
-        files = {
-            'file': (file_name, file_content, 'application/octet-stream')
-        }
-        data = {
-            'number': number,
-            'mediatype': media_type,
-            'caption': caption,
-            'delay': '1200'
-        }
-        
-        try:
-            print(f"Enviando {media_type} para {number} via {target_instance}...")
-            response = requests.post(endpoint, files=files, data=data, headers=headers)
-            res_json = response.json()
-            print(f"Resposta Evolution Media: {res_json}")
-            return res_json
-        except Exception as e:
-            print(f"Erro Crítico Evolution (Media): {e}")
             return None

@@ -4,12 +4,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 import json
 from .services import NocoDBClient, AIClient, DocumentService, EvolutionService
-from .reports import ReportService
 from .models import AppSettings
 from django_eventstream import send_event
-
-# Versão do Sistema para Verificação de Deploy
-VERSION = "2.2 - NocoDB & ReportLab Fix"
 
 # Inicialização dos clientes de serviço
 client = NocoDBClient()
@@ -532,24 +528,31 @@ def whatsapp_webhook(request):
             message_obj = data.get('message', {})
             key_obj = data.get('key', {})
             
-            if key_obj.get('fromMe'):
-                return JsonResponse({"status": "ignored"})
-
+            # Extrair JIDs (Suporte a LID e Whatsapp JID tradicional)
             remote_jid = key_obj.get('remoteJid', '')
-            # Extrair apenas o número (sem @s.whatsapp.net ou @lid)
+            remote_jid_alt = key_obj.get('remoteJidAlt', '')
+            
+            # Números limpos (apenas dígitos)
             user_number = remote_jid.split('@')[0] if remote_jid else ''
+            user_number_alt = remote_jid_alt.split('@')[0] if remote_jid_alt else ''
             
-            # --- Filtro de Número Permitido ---
-            allowed_raw = settings.whatsapp_allowed_numbers or ""
-            allowed_list = [n.strip() for n in allowed_raw.replace(',', ' ').split() if n.strip()]
+            # 2. Verificar Números Autorizados (para ignorar fromMe se necessário)
+            allowed_raw = str(settings.whatsapp_allowed_numbers or "").strip()
+            allowed_list = [n.strip() for n in allowed_raw.replace(';', ',').split(',') if n.strip()]
             
-            # Se a lista não estiver vazia, verificamos se o JID ou o número estão nela
-            if allowed_list:
-                if remote_jid not in allowed_list and user_number not in allowed_list:
-                    print(f"❌ Webhook Ignorado: Usuário '{remote_jid}' não autorizado.")
-                    return JsonResponse({"status": "ignored", "reason": "unauthorized_user"})
-                else:
-                    print(f"✅ Usuário '{remote_jid}' Autorizado.")
+            is_authorized = False
+            if user_number in allowed_list or user_number_alt in allowed_list:
+                is_authorized = True
+                print(f"👤 Mensagem de número autorizado: {user_number or user_number_alt}")
+            
+            if key_obj.get('fromMe') and not is_authorized:
+                print(f"ℹ️ Mensagem de 'mim mesmo' ignorada (não autorizada).")
+                return JsonResponse({"status": "ignored"})
+            
+            # Se for do bot mas autorizado, usamos o JID real (preferência pelo alt se o principal for LID)
+            target_number = user_number
+            if "@lid" in remote_jid and user_number_alt:
+                target_number = user_number_alt
             
             text_context = ""
             if 'conversation' in message_obj:
@@ -577,51 +580,14 @@ def whatsapp_webhook(request):
                     
                     # 3. Executar Ação baseada na Intenção
                     if intent == "register_transaction":
-                        # Mapear Categoria_nome para Categoria_id
-                        cat_name = data.get('Categoria_nome')
-                        if cat_name and categories_data:
-                            matching_cat = next((c for c in categories_data if c.get('nome','').lower() == cat_name.lower()), None)
-                            if matching_cat:
-                                data['Categoria'] = matching_cat.get('Id')
-                        
-                        # Normalizar Valor
-                        valor_raw = str(data.get('Valor', '0'))
-                        valor_clean = valor_raw.replace('Kz', '').replace(' ', '').replace('.', '').replace(',', '.')
-                        try:
-                            data['Valor'] = float(valor_clean)
-                        except:
-                            data['Valor'] = 0
-
-                        # Garantir Data e Tipo
-                        if not data.get('Data'): data['Data'] = datetime.now().strftime('%Y-%m-%d')
-                        if not data.get('Tipo'): data['Tipo'] = 'Despesa'
-                        if not data.get('Descricao'): data['Descricao'] = 'Registado via WhatsApp'
-
-                        payload = {
+                        client.create_transaction({
                             'Data': data.get('Data'),
                             'Tipo': data.get('Tipo'),
                             'Valor': data.get('Valor'),
-                            'Descricao': data.get('Descricao')
-                        }
-                        # Só incluir Categoria se houver um ID válido
-                        if data.get('Categoria'):
-                            payload['Categoria'] = data.get('Categoria')
-
-                        print(f"[{VERSION}] - Enviando Payload para NocoDB: {payload}")
-                        try:
-                            # Tentar cast int para Categoria se existir
-                            if 'Categoria' in payload and payload['Categoria']:
-                                try:
-                                    payload['Categoria'] = int(payload['Categoria'])
-                                except:
-                                    pass
-                            
-                            client.create_transaction(payload)
-                            send_event('finance', 'message', {'text': 'refresh'})
-                        except Exception as noco_err:
-                            if hasattr(noco_err, 'response') and noco_err.response is not None:
-                                print(f"[{VERSION}] - Erro NocoDB Detalhado: {noco_err.response.text}")
-                            raise noco_err
+                            'Descricao': data.get('Descricao'),
+                            'Categoria_id': data.get('Categoria_id')
+                        })
+                        send_event('finance', 'message', {'text': 'refresh'})
                     
                     elif intent == "manage_categories" and data.get("nova_categoria_nome"):
                         new_cat_name = data.get("nova_categoria_nome")
@@ -629,54 +595,12 @@ def whatsapp_webhook(request):
                         print(f"Nova categoria criada via WhatsApp: {new_cat_name}")
                         # Opcionalmente enviar evento se houver listener na lista de categorias
                     
-                    elif intent == "document_report":
-                        fmt = data.get("format", "pdf").lower()
-                        # Obter dados para o relatório
-                        trans_data = client.get_transactions().get('list', [])
-                        
-                        # Simular resumo para o PDF
-                        income = sum(float(t.get('Valor', 0)) for t in trans_data if t.get('Tipo') == 'Receita')
-                        expenses = sum(float(t.get('Valor', 0)) for t in trans_data if t.get('Tipo') == 'Despesa')
-                        sum_data = {'balance': income - expenses, 'income': income, 'expenses': expenses}
-                        
-                        evo = EvolutionService()
-                        if fmt == "excel":
-                            file_buf = ReportService.generate_excel_report(trans_data)
-                            file_name = f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.xlsx"
-                            evo.send_media(user_number, file_buf, file_name, media_type="document", caption="Aqui está o seu relatório Excel! 📊", instance_id=instance_name)
-                        else:
-                            file_buf = ReportService.generate_pdf_report(trans_data, sum_data)
-                            file_name = f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.pdf"
-                            evo.send_media(user_number, file_buf, file_name, media_type="document", caption="Aqui está o seu relatório PDF! 📑", instance_id=instance_name)
-
                     # 4. Enviar Resposta via WhatsApp
                     evo = EvolutionService()
-                    print(f"Enviando resposta para {user_number} via instância '{instance_name}'")
-                    evo.send_message(user_number, response_msg, instance_id=instance_name)
+                    print(f"Enviando resposta para {target_number} via instância '{instance_name}'")
+                    evo.send_message(target_number, response_msg, instance_id=instance_name)
                     
         return JsonResponse({"status": "success"})
     except Exception as e:
         print(f"Erro Webhook: {e}")
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
-
-@login_required
-def export_pdf(request):
-    """Gera e retorna um relatório PDF para download."""
-    data = client.get_transactions().get('list', [])
-    income = sum(float(t.get('Valor', 0)) for t in data if t.get('Tipo') == 'Receita')
-    expenses = sum(float(t.get('Valor', 0)) for t in data if t.get('Tipo') == 'Despesa')
-    summary = {'balance': income - expenses, 'income': income, 'expenses': expenses}
-    
-    pdf_buf = ReportService.generate_pdf_report(data, summary)
-    response = HttpResponse(pdf_buf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Relatorio_Financeiro_{datetime.now().strftime("%Y%m%d")}.pdf"'
-    return response
-
-@login_required
-def export_excel(request):
-    """Gera e retorna um relatório Excel para download."""
-    data = client.get_transactions().get('list', [])
-    xlsx_buf = ReportService.generate_excel_report(data)
-    response = HttpResponse(xlsx_buf, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="Relatorio_Financeiro_{datetime.now().strftime("%Y%m%d")}.xlsx"'
-    return response
