@@ -325,8 +325,8 @@ class EvolutionService:
         headers = {'apikey': self.key, 'Content-Type': 'application/json'}
         payload = {
             "number": number,
-            "options": {"delay": 1200, "presence": "composing", "linkPreview": False},
-            "textMessage": {"text": message}
+            "text": message,
+            "options": {"delay": 1200, "presence": "composing", "linkPreview": False}
         }
         try:
             print(f"Enviando resposta via WhatsApp para {number} (Instância: {target_instance})...")
