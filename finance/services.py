@@ -116,6 +116,11 @@ class NocoDBClient:
 
     # --- Métodos para Transações (Financeiro) ---
     def get_transactions(self, query_params=None):
+        query_params = query_params or {}
+        # Adicionar ordenação por CreatedAt decrescente por padrão se não houver sort explícito
+        if 'sort' not in query_params:
+            import json
+            query_params['sort'] = json.dumps([{"field": "CreatedAt", "direction": "desc"}])
         return self._get(self.table_financeiro, params=query_params)
 
     def create_transaction(self, data):
