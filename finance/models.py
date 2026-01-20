@@ -12,13 +12,6 @@ class AppSettings(models.Model):
         help_text="ID da instância da Evolution API (ex: bc8e8300-...)"
     )
 
-    whatsapp_allowed_numbers = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Números WhatsApp Autorizados",
-        help_text="Lista de números (separados por vírgula) autorizados a interagir com o bot, mesmo que fromMe seja true. Ex: 244956834375, 551199999999"
-    )
-
     # Configurações de IA
     AI_PROVIDERS = [
         ('ollama', 'Ollama (Qwen)'),

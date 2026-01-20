@@ -1,7 +1,6 @@
 import requests
 import os
 import io
-from decouple import config, UndefinedValueError
 from dotenv import load_dotenv
 
 # Dependências para OCR e PDF
@@ -20,10 +19,8 @@ if pytesseract:
 else:
     print("Aviso: Pytesseract não encontrado. OCR de imagem desativado.")
 
-# Carrega variáveis de ambiente do arquivo .env (Caminho absoluto para maior robustez)
-from pathlib import Path
-env_path = Path(__file__).resolve().parent.parent / '.env'
-load_dotenv(dotenv_path=env_path, override=True)
+# Carrega variáveis de ambiente do arquivo .env
+load_dotenv()
 
 class NocoDBClient:
     """
@@ -31,19 +28,11 @@ class NocoDBClient:
     Gere Transações e Categorias.
     """
     def __init__(self):
-        # Configurações extraídas do ambiente usando decouple para maior robustez
-        self.base_url = config("NOCODB_BASE_URL", default="https://eden-nocodb.w2zld5.easypanel.host")
-        
-        # Fallbacks específicos do projeto para garantir funcionamento se o env falhar no Docker
-        self.base_id = config("NOCODB_BASE_ID", default="pq3afc6dzxoxhjc")
-        self.token = config("NOCODB_TOKEN", default="MbokjRa78GIyYAlDBz1JU4iYR1jS20y6AWf65szN")
-        self.table_financeiro = config("TABLE_ID_FINANCEIRO", default="m2ae14vkmcw7up0")
-        self.table_categoria = config("TABLE_ID_CATEGORIA", default="m5cv9o3pyw0k3w2")
-        
-        # Garantia absoluta: se vier como string "None" ou vazio, usa o fallback hardcoded
-        if not self.base_id or self.base_id == "None":
-            self.base_id = "pq3afc6dzxoxhjc"
-            
+        # Configurações extraídas do ambiente
+        self.base_url = os.getenv("NOCODB_BASE_URL")
+        self.token = os.getenv("NOCODB_TOKEN")
+        self.table_financeiro = os.getenv("TABLE_ID_FINANCEIRO")
+        self.table_categoria = os.getenv("TABLE_ID_CATEGORIA")
         self.headers = {
             "xc-token": self.token,
             "Content-Type": "application/json",
@@ -51,76 +40,41 @@ class NocoDBClient:
         }
 
     def _get(self, table_id, params=None):
-        """Método genérico para requisições GET v3 com normalização."""
-        url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records"
+        """Método genérico para requisições GET com limite aumentado."""
+        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
         
-        # Garantir limite de 1000 por padrão (v3 usa pageSize)
+        # Garantir limite de 1000 (máximo do NocoDB) por padrão
         params = params or {}
-        if 'pageSize' not in params:
-            params['pageSize'] = 1000
+        if 'limit' not in params:
+            params['limit'] = 1000
             
         response = requests.get(url, headers=self.headers, params=params)
         response.raise_for_status()
-        data = response.json()
-        
-        # Normalização: Flatten 'fields' para manter compatibilidade com v2
-        records = data.get('records', [])
-        flattened = []
-        for r in records:
-            item = r.get('fields', {}).copy()
-            item['Id'] = r.get('id') # Manter uppercase 'Id' para compatibilidade
-            flattened.append(item)
-            
-        return {'list': flattened, 'pageInfo': data.get('pageInfo', {})}
+        return response.json()
 
     def _post(self, table_id, data):
-        """Método genérico para requisições POST v3."""
-        url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records"
+        """Método genérico para requisições POST."""
+        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
         response = requests.post(url, headers=self.headers, json=data)
         response.raise_for_status()
-        res_data = response.json()
-        # Normaliza retorno para v2 style
-        if 'fields' in res_data:
-            item = res_data['fields'].copy()
-            item['Id'] = res_data.get('id')
-            return item
-        return res_data
+        return response.json()
 
     def _patch(self, table_id, data):
-        """Método genérico para requisições PATCH v3 robusto."""
-        # Tenta extrair o ID para fazer update via URL (padrão v3 recomendado para um registro)
-        record_id = data.get('Id') or data.get('id')
-        
-        if record_id:
-            url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records/{record_id}"
-            # Remove IDs do corpo para evitar redundância
-            payload = data.copy()
-            if 'Id' in payload: del payload['Id']
-            if 'id' in payload: del payload['id']
-            response = requests.patch(url, headers=self.headers, json=payload)
-        else:
-            # Fallback para bulk patch se não houver ID (data deve ser lista)
-            url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records"
-            response = requests.patch(url, headers=self.headers, json=data)
-            
+        """Método genérico para requisições PATCH."""
+        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
+        response = requests.patch(url, headers=self.headers, json=data)
         response.raise_for_status()
         return response.json()
 
     def _delete(self, table_id, record_id):
-        """Método genérico para requisições DELETE v3."""
-        # Na v3 o recordId vai na URL
-        url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records/{record_id}"
-        response = requests.delete(url, headers=self.headers)
+        """Método genérico para requisições DELETE."""
+        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
+        response = requests.delete(url, headers=self.headers, json={"Id": record_id})
         response.raise_for_status()
         return response.status_code
 
     # --- Métodos para Transações (Financeiro) ---
     def get_transactions(self, query_params=None):
-        query_params = query_params or {}
-        # Adicionar ordenação por CreatedAt decrescente por padrão se não houver sort explícito
-        if 'sort' not in query_params:
-            import json
-            query_params['sort'] = json.dumps([{"field": "CreatedAt", "direction": "desc"}])
         return self._get(self.table_financeiro, params=query_params)
 
     def create_transaction(self, data):
@@ -432,9 +386,9 @@ class DocumentService:
 class EvolutionService:
     """Serviço para integração com WhatsApp via Evolution API."""
     def __init__(self):
-        self.url = config('EVOLUTION_API_URL', default=None)
-        self.key = config('EVOLUTION_API_KEY', default=None)
-        self.instance = config('EVOLUTION_INSTANCE', default=None)
+        self.url = os.getenv('EVOLUTION_API_URL')
+        self.key = os.getenv('EVOLUTION_API_KEY')
+        self.instance = os.getenv('EVOLUTION_INSTANCE')
 
     def send_message(self, number, message, instance_id=None):
         """Envia mensagem de texto via WhatsApp (Dinamiza a instância se necessário)."""

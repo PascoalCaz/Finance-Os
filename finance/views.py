@@ -148,18 +148,12 @@ def dashboard(request):
             chart_evolution.append(cumulative_balance)
 
         # 3. Distribuição por Categoria
-        categories_data = client.get_categories().get('list', [])
-        cat_map = {c.get('Id'): c.get('nome') for c in categories_data}
-        
         def get_cat_name(trans):
-            cat_id = trans.get('Categoria')
-            if isinstance(cat_id, list) and cat_id: # Suporte a m2m se vier como lista
-                cat_id = cat_id[0]
-            
-            if isinstance(cat_id, dict): # Suporte a objeto inline
-                return cat_id.get('nome', 'Sem Categoria')
-                
-            return cat_map.get(cat_id, 'Sem Categoria')
+            relations = trans.get('_nc_m2m_Financeiro_Categoria', [])
+            if relations and isinstance(relations, list):
+                cat = relations[0].get('Categoria', {})
+                return cat.get('nome', 'Sem Categoria')
+            return "Sem Categoria"
 
         categories_summary = defaultdict(float)
         for t in transactions:
@@ -204,23 +198,12 @@ def get_financial_context():
         income = sum(to_float(t.get('Valor')) for t in transactions if t.get('Tipo') == 'Receita')
         expenses = sum(to_float(t.get('Valor')) for t in transactions if t.get('Tipo') == 'Despesa')
         
-        # Carregar categorias para nomes
-        categories_data = client.get_categories().get('list', [])
-        cat_map = {c.get('Id'): c.get('nome') for c in categories_data}
-        
         from collections import defaultdict
         cat_totals = defaultdict(float)
         for t in transactions:
             if t.get('Tipo') == 'Despesa':
-                cat_id = t.get('Categoria')
-                if isinstance(cat_id, list) and cat_id: cat_id = cat_id[0]
-                
-                cat_name = 'Outros'
-                if isinstance(cat_id, dict):
-                    cat_name = cat_id.get('nome', 'Outros')
-                else:
-                    cat_name = cat_map.get(cat_id, 'Outros')
-                    
+                relations = t.get('_nc_m2m_Financeiro_Categoria', [])
+                cat_name = relations[0].get('Categoria', {}).get('nome', 'Outros') if relations else 'Outros'
                 cat_totals[cat_name] += to_float(t.get('Valor'))
         
         top_cats = sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:3]
@@ -256,28 +239,21 @@ def transaction_list(request):
     
     active_category = None
     
-    # 1. Buscar categorias para resolver nomes
-    categories_data = client.get_categories().get('list', [])
-    cat_map = {c.get('Id'): c.get('nome') for c in categories_data}
-    
-    # 2. Resolver nomes das categorias e aplicar filtro se necessário
+    # Resolver nomes das categorias e aplicar filtro se necessário
     resolved_transactions = []
     for t in transactions:
-        cat_id_val = t.get('Categoria')
-        if isinstance(cat_id_val, list) and cat_id_val:
-            cat_id_val = cat_id_val[0]
+        relations = t.get('_nc_m2m_Financeiro_Categoria', [])
+        cat_name = 'Sem Categoria'
+        current_cat_id = None
         
-        # Se for um objeto (id/nome)
-        if isinstance(cat_id_val, dict):
-            current_cat_id = cat_id_val.get('Id') or cat_id_val.get('id')
-            cat_name = cat_id_val.get('nome', 'Sem Categoria')
-        else:
-            current_cat_id = cat_id_val
-            cat_name = cat_map.get(current_cat_id, 'Sem Categoria')
+        if relations and isinstance(relations, list):
+            cat_obj = relations[0].get('Categoria', {})
+            cat_name = cat_obj.get('nome', 'Sem Categoria')
+            current_cat_id = cat_obj.get('Id')
             
         t['Categoria_nome'] = cat_name
         
-        # Filtro por ID de categoria
+        # Filtro por ID de categoria (NocoDB retorna como int ou string dependendo da versão)
         if not cat_id or str(current_cat_id) == str(cat_id):
             resolved_transactions.append(t)
             if str(current_cat_id) == str(cat_id):
@@ -478,9 +454,8 @@ def settings_view(request):
             settings.gemini_api_key = request.POST.get("gemini_api_key")
             settings.anthropic_api_key = request.POST.get("anthropic_api_key")
         else:
-            # WhatsApp Form
+            # WhatsApp Form (Old structure)
             settings.whatsapp_instance_id = request.POST.get("whatsapp_instance_id")
-            settings.whatsapp_allowed_numbers = request.POST.get("whatsapp_allowed_numbers")
             
         settings.save()
         return redirect('settings')
@@ -528,31 +503,12 @@ def whatsapp_webhook(request):
             message_obj = data.get('message', {})
             key_obj = data.get('key', {})
             
-            # Extrair JIDs (Suporte a LID e Whatsapp JID tradicional)
-            remote_jid = key_obj.get('remoteJid', '')
-            remote_jid_alt = key_obj.get('remoteJidAlt', '')
-            
-            # Números limpos (apenas dígitos)
-            user_number = remote_jid.split('@')[0] if remote_jid else ''
-            user_number_alt = remote_jid_alt.split('@')[0] if remote_jid_alt else ''
-            
-            # 2. Verificar Números Autorizados (para ignorar fromMe se necessário)
-            allowed_raw = str(settings.whatsapp_allowed_numbers or "").strip()
-            allowed_list = [n.strip() for n in allowed_raw.replace(';', ',').split(',') if n.strip()]
-            
-            is_authorized = False
-            if user_number in allowed_list or user_number_alt in allowed_list:
-                is_authorized = True
-                print(f"👤 Mensagem de número autorizado: {user_number or user_number_alt}")
-            
-            if key_obj.get('fromMe') and not is_authorized:
-                print(f"ℹ️ Mensagem de 'mim mesmo' ignorada (não autorizada).")
+            if key_obj.get('fromMe'):
                 return JsonResponse({"status": "ignored"})
-            
-            # Se for do bot mas autorizado, usamos o JID real (preferência pelo alt se o principal for LID)
-            target_number = user_number
-            if "@lid" in remote_jid and user_number_alt:
-                target_number = user_number_alt
+
+            remote_jid = key_obj.get('remoteJid', '')
+            # Extrair apenas o número (sem @s.whatsapp.net ou @lid)
+            user_number = remote_jid.split('@')[0] if remote_jid else ''
             
             text_context = ""
             if 'conversation' in message_obj:
@@ -597,8 +553,8 @@ def whatsapp_webhook(request):
                     
                     # 4. Enviar Resposta via WhatsApp
                     evo = EvolutionService()
-                    print(f"Enviando resposta para {target_number} via instância '{instance_name}'")
-                    evo.send_message(target_number, response_msg, instance_id=instance_name)
+                    print(f"Enviando resposta para {user_number} via instância '{instance_name}'")
+                    evo.send_message(user_number, response_msg, instance_id=instance_name)
                     
         return JsonResponse({"status": "success"})
     except Exception as e:
