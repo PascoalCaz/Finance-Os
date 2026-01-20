@@ -8,6 +8,9 @@ from .reports import ReportService
 from .models import AppSettings
 from django_eventstream import send_event
 
+# Versão do Sistema para Verificação de Deploy
+VERSION = "2.2 - NocoDB & ReportLab Fix"
+
 # Inicialização dos clientes de serviço
 client = NocoDBClient()
 ai_client = AIClient()
@@ -604,13 +607,20 @@ def whatsapp_webhook(request):
                         if data.get('Categoria'):
                             payload['Categoria'] = data.get('Categoria')
 
-                        print(f"Enviando Payload para NocoDB: {payload}")
+                        print(f"[{VERSION}] - Enviando Payload para NocoDB: {payload}")
                         try:
+                            # Tentar cast int para Categoria se existir
+                            if 'Categoria' in payload and payload['Categoria']:
+                                try:
+                                    payload['Categoria'] = int(payload['Categoria'])
+                                except:
+                                    pass
+                            
                             client.create_transaction(payload)
                             send_event('finance', 'message', {'text': 'refresh'})
                         except Exception as noco_err:
                             if hasattr(noco_err, 'response') and noco_err.response is not None:
-                                print(f"Erro NocoDB Detalhado: {noco_err.response.text}")
+                                print(f"[{VERSION}] - Erro NocoDB Detalhado: {noco_err.response.text}")
                             raise noco_err
                     
                     elif intent == "manage_categories" and data.get("nova_categoria_nome"):
