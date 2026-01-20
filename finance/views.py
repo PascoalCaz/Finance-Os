@@ -592,15 +592,26 @@ def whatsapp_webhook(request):
                         # Garantir Data e Tipo
                         if not data.get('Data'): data['Data'] = datetime.now().strftime('%Y-%m-%d')
                         if not data.get('Tipo'): data['Tipo'] = 'Despesa'
+                        if not data.get('Descricao'): data['Descricao'] = 'Registado via WhatsApp'
 
-                        client.create_transaction({
+                        payload = {
                             'Data': data.get('Data'),
                             'Tipo': data.get('Tipo'),
                             'Valor': data.get('Valor'),
-                            'Descricao': data.get('Descricao'),
-                            'Categoria': data.get('Categoria')
-                        })
-                        send_event('finance', 'message', {'text': 'refresh'})
+                            'Descricao': data.get('Descricao')
+                        }
+                        # Só incluir Categoria se houver um ID válido
+                        if data.get('Categoria'):
+                            payload['Categoria'] = data.get('Categoria')
+
+                        print(f"Enviando Payload para NocoDB: {payload}")
+                        try:
+                            client.create_transaction(payload)
+                            send_event('finance', 'message', {'text': 'refresh'})
+                        except Exception as noco_err:
+                            if hasattr(noco_err, 'response') and noco_err.response is not None:
+                                print(f"Erro NocoDB Detalhado: {noco_err.response.text}")
+                            raise noco_err
                     
                     elif intent == "manage_categories" and data.get("nova_categoria_nome"):
                         new_cat_name = data.get("nova_categoria_nome")
