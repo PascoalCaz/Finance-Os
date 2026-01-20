@@ -33,15 +33,17 @@ class NocoDBClient:
     def __init__(self):
         # Configurações extraídas do ambiente usando decouple para maior robustez
         self.base_url = config("NOCODB_BASE_URL", default="https://eden-nocodb.w2zld5.easypanel.host")
-        self.base_id = config("NOCODB_BASE_ID", default=None)
-        self.token = config("NOCODB_TOKEN", default=None)
-        self.table_financeiro = config("TABLE_ID_FINANCEIRO", default=None)
-        self.table_categoria = config("TABLE_ID_CATEGORIA", default=None)
         
-        # Validação crítica para evitar erros 422 silenciosos
+        # Fallbacks específicos do projeto para garantir funcionamento se o env falhar no Docker
+        self.base_id = config("NOCODB_BASE_ID", default="pq3afc6dzxoxhjc")
+        self.token = config("NOCODB_TOKEN", default="MbokjRa78GIyYAlDBz1JU4iYR1jS20y6AWf65szN")
+        self.table_financeiro = config("TABLE_ID_FINANCEIRO", default="m2ae14vkmcw7up0")
+        self.table_categoria = config("TABLE_ID_CATEGORIA", default="m5cv9o3pyw0k3w2")
+        
+        # Garantia absoluta: se vier como string "None" ou vazio, usa o fallback hardcoded
         if not self.base_id or self.base_id == "None":
-            print("CRITICAL ERROR: NOCODB_BASE_ID não encontrado no ambiente (.env)!")
-        
+            self.base_id = "pq3afc6dzxoxhjc"
+            
         self.headers = {
             "xc-token": self.token,
             "Content-Type": "application/json",
