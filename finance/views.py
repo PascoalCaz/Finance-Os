@@ -148,12 +148,18 @@ def dashboard(request):
             chart_evolution.append(cumulative_balance)
 
         # 3. Distribuição por Categoria
+        categories_data = client.get_categories().get('list', [])
+        cat_map = {c.get('Id'): c.get('nome') for c in categories_data}
+        
         def get_cat_name(trans):
-            relations = trans.get('_nc_m2m_Financeiro_Categoria', [])
-            if relations and isinstance(relations, list):
-                cat = relations[0].get('Categoria', {})
-                return cat.get('nome', 'Sem Categoria')
-            return "Sem Categoria"
+            cat_id = trans.get('Categoria')
+            if isinstance(cat_id, list) and cat_id: # Suporte a m2m se vier como lista
+                cat_id = cat_id[0]
+            
+            if isinstance(cat_id, dict): # Suporte a objeto inline
+                return cat_id.get('nome', 'Sem Categoria')
+                
+            return cat_map.get(cat_id, 'Sem Categoria')
 
         categories_summary = defaultdict(float)
         for t in transactions:
@@ -198,12 +204,23 @@ def get_financial_context():
         income = sum(to_float(t.get('Valor')) for t in transactions if t.get('Tipo') == 'Receita')
         expenses = sum(to_float(t.get('Valor')) for t in transactions if t.get('Tipo') == 'Despesa')
         
+        # Carregar categorias para nomes
+        categories_data = client.get_categories().get('list', [])
+        cat_map = {c.get('Id'): c.get('nome') for c in categories_data}
+        
         from collections import defaultdict
         cat_totals = defaultdict(float)
         for t in transactions:
             if t.get('Tipo') == 'Despesa':
-                relations = t.get('_nc_m2m_Financeiro_Categoria', [])
-                cat_name = relations[0].get('Categoria', {}).get('nome', 'Outros') if relations else 'Outros'
+                cat_id = t.get('Categoria')
+                if isinstance(cat_id, list) and cat_id: cat_id = cat_id[0]
+                
+                cat_name = 'Outros'
+                if isinstance(cat_id, dict):
+                    cat_name = cat_id.get('nome', 'Outros')
+                else:
+                    cat_name = cat_map.get(cat_id, 'Outros')
+                    
                 cat_totals[cat_name] += to_float(t.get('Valor'))
         
         top_cats = sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:3]
@@ -239,21 +256,28 @@ def transaction_list(request):
     
     active_category = None
     
-    # Resolver nomes das categorias e aplicar filtro se necessário
+    # 1. Buscar categorias para resolver nomes
+    categories_data = client.get_categories().get('list', [])
+    cat_map = {c.get('Id'): c.get('nome') for c in categories_data}
+    
+    # 2. Resolver nomes das categorias e aplicar filtro se necessário
     resolved_transactions = []
     for t in transactions:
-        relations = t.get('_nc_m2m_Financeiro_Categoria', [])
-        cat_name = 'Sem Categoria'
-        current_cat_id = None
+        cat_id_val = t.get('Categoria')
+        if isinstance(cat_id_val, list) and cat_id_val:
+            cat_id_val = cat_id_val[0]
         
-        if relations and isinstance(relations, list):
-            cat_obj = relations[0].get('Categoria', {})
-            cat_name = cat_obj.get('nome', 'Sem Categoria')
-            current_cat_id = cat_obj.get('Id')
+        # Se for um objeto (id/nome)
+        if isinstance(cat_id_val, dict):
+            current_cat_id = cat_id_val.get('Id') or cat_id_val.get('id')
+            cat_name = cat_id_val.get('nome', 'Sem Categoria')
+        else:
+            current_cat_id = cat_id_val
+            cat_name = cat_map.get(current_cat_id, 'Sem Categoria')
             
         t['Categoria_nome'] = cat_name
         
-        # Filtro por ID de categoria (NocoDB retorna como int ou string dependendo da versão)
+        # Filtro por ID de categoria
         if not cat_id or str(current_cat_id) == str(cat_id):
             resolved_transactions.append(t)
             if str(current_cat_id) == str(cat_id):

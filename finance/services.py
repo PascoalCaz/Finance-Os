@@ -30,6 +30,7 @@ class NocoDBClient:
     def __init__(self):
         # Configurações extraídas do ambiente
         self.base_url = os.getenv("NOCODB_BASE_URL")
+        self.base_id = os.getenv("NOCODB_BASE_ID")
         self.token = os.getenv("NOCODB_TOKEN")
         self.table_financeiro = os.getenv("TABLE_ID_FINANCEIRO")
         self.table_categoria = os.getenv("TABLE_ID_CATEGORIA")
@@ -40,36 +41,66 @@ class NocoDBClient:
         }
 
     def _get(self, table_id, params=None):
-        """Método genérico para requisições GET com limite aumentado."""
-        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
+        """Método genérico para requisições GET v3 com normalização."""
+        url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records"
         
-        # Garantir limite de 1000 (máximo do NocoDB) por padrão
+        # Garantir limite de 1000 por padrão (v3 usa pageSize)
         params = params or {}
-        if 'limit' not in params:
-            params['limit'] = 1000
+        if 'pageSize' not in params:
+            params['pageSize'] = 1000
             
         response = requests.get(url, headers=self.headers, params=params)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Normalização: Flatten 'fields' para manter compatibilidade com v2
+        records = data.get('records', [])
+        flattened = []
+        for r in records:
+            item = r.get('fields', {}).copy()
+            item['Id'] = r.get('id') # Manter uppercase 'Id' para compatibilidade
+            flattened.append(item)
+            
+        return {'list': flattened, 'pageInfo': data.get('pageInfo', {})}
 
     def _post(self, table_id, data):
-        """Método genérico para requisições POST."""
-        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
+        """Método genérico para requisições POST v3."""
+        url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records"
         response = requests.post(url, headers=self.headers, json=data)
         response.raise_for_status()
-        return response.json()
+        res_data = response.json()
+        # Normaliza retorno para v2 style
+        if 'fields' in res_data:
+            item = res_data['fields'].copy()
+            item['Id'] = res_data.get('id')
+            return item
+        return res_data
 
     def _patch(self, table_id, data):
-        """Método genérico para requisições PATCH."""
-        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
-        response = requests.patch(url, headers=self.headers, json=data)
+        """Método genérico para requisições PATCH v3 robusto."""
+        # Tenta extrair o ID para fazer update via URL (padrão v3 recomendado para um registro)
+        record_id = data.get('Id') or data.get('id')
+        
+        if record_id:
+            url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records/{record_id}"
+            # Remove IDs do corpo para evitar redundância
+            payload = data.copy()
+            if 'Id' in payload: del payload['Id']
+            if 'id' in payload: del payload['id']
+            response = requests.patch(url, headers=self.headers, json=payload)
+        else:
+            # Fallback para bulk patch se não houver ID (data deve ser lista)
+            url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records"
+            response = requests.patch(url, headers=self.headers, json=data)
+            
         response.raise_for_status()
         return response.json()
 
     def _delete(self, table_id, record_id):
-        """Método genérico para requisições DELETE."""
-        url = f"{self.base_url}/api/v2/tables/{table_id}/records"
-        response = requests.delete(url, headers=self.headers, json={"Id": record_id})
+        """Método genérico para requisições DELETE v3."""
+        # Na v3 o recordId vai na URL
+        url = f"{self.base_url}/api/v3/data/{self.base_id}/{table_id}/records/{record_id}"
+        response = requests.delete(url, headers=self.headers)
         response.raise_for_status()
         return response.status_code
 
