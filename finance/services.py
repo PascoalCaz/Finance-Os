@@ -104,20 +104,50 @@ class AIClient:
     Cliente para integração com LLMs (Ollama, DeepSeek, OpenAI, Gemini, Anthropic).
     """
     def __init__(self, provider=None):
-        from .models import AppSettings
-        self.settings = AppSettings.get_settings()
-        
-        # Provedor padrão (Sessão > Settings > Env)
-        self.provider = provider or self.settings.default_ai_provider or os.getenv("AI_PROVIDER", "ollama")
-        
-        # Configurações dinâmicas
-        self.ollama_url = self.settings.ollama_url
-        self.ollama_model = self.settings.ollama_model
-        
-        self.deepseek_key = self.settings.deepseek_api_key or os.getenv("DEEPSEEK_API_KEY")
-        self.openai_key = self.settings.openai_api_key or os.getenv("OPENAI_API_KEY")
-        self.gemini_key = self.settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
-        self.anthropic_key = self.settings.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
+        self._settings = None
+        self._explicit_provider = provider
+
+    @property
+    def settings(self):
+        if self._settings is None:
+            from .models import AppSettings
+            try:
+                self._settings = AppSettings.get_settings()
+            except Exception as e:
+                print(f"Erro ao carregar AppSettings (IA): {e}")
+                # Fallback para um objeto vazio ou mock se a DB não estiver pronta
+                return None
+        return self._settings
+
+    @property
+    def provider(self):
+        if self._explicit_provider:
+            return self._explicit_provider
+        return self.settings.default_ai_provider if self.settings else os.getenv("AI_PROVIDER", "ollama")
+
+    @property
+    def ollama_url(self):
+        return self.settings.ollama_url if self.settings else "https://eden-ollama.w2zld5.easypanel.host/v1"
+
+    @property
+    def ollama_model(self):
+        return self.settings.ollama_model if self.settings else "qwen2.5-coder:3b-instruct-q4_K_M"
+
+    @property
+    def deepseek_key(self):
+        return (self.settings.deepseek_api_key if self.settings else None) or os.getenv("DEEPSEEK_API_KEY")
+
+    @property
+    def openai_key(self):
+        return (self.settings.openai_api_key if self.settings else None) or os.getenv("OPENAI_API_KEY")
+
+    @property
+    def gemini_key(self):
+        return (self.settings.gemini_api_key if self.settings else None) or os.getenv("GEMINI_API_KEY")
+
+    @property
+    def anthropic_key(self):
+        return (self.settings.anthropic_api_key if self.settings else None) or os.getenv("ANTHROPIC_API_KEY")
 
     def _call_ollama(self, prompt):
         try:
