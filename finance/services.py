@@ -154,54 +154,49 @@ class AIClient:
             print(f"Erro no DeepSeek: {e}")
             return None
 
-    def parse_transaction(self, text, categories, provider=None):
+    def process_user_intent(self, text, financial_context, categories):
         """
-        Recebe um texto e tenta converter num objeto de transação JSON.
+        Processa a intenção do utilizador com base no texto e no contexto financeiro.
+        Suporta: Registar, Relatórios, Análise e Gestão de Categorias.
         """
-        selected_provider = provider or self.provider
         from datetime import datetime
         today = datetime.now().strftime("%Y-%m-%d")
-        month_name = datetime.now().strftime("%B")
-        
         cat_list = ", ".join([c['nome'] for c in categories])
-        prompt = f"""Você é um assistente financeiro de elite, capaz de extrair dados de documentos e conversar com o usuário.
-Sua missão é extrair dados para uma transação JÁ CONFIRMADA ou FAZER PERGUNTAS DE CLARIFICAÇÃO.
+        
+        prompt = f"""Você é o FinanceOS AI, um assistente financeiro inteligente e direto.
+Sua missão é ajudar o usuário a gerir finanças via WhatsApp.
 
-ENTRADA DO USUÁRIO: "{text}"
+CONTEXTO FINANCEIRO ATUAL:
+{financial_context}
+
 CATEGORIAS DISPONÍVEIS: {cat_list}
 DATA ATUAL: {today}
 
-CRITÉRIOS DE DECISÃO:
-1. STATUS "Success": Se você tiver Valor, Tipo (Receita/Despesa) e uma Categoria clara (ou aproximada).
-2. STATUS "Question": Se faltar o Valor Total ou se o Tipo/Categoria for impossível de determinar sem perguntar.
+ENTRADA DO USUÁRIO: "{text}"
 
-INSTRUÇÕES DE EXTRAÇÃO:
-- Valor: Procure pelo valor TOTAL (Total a Pagar, Importe, etc). Se encontrar 'Kz', 'AOA', '€' ou '$', o número ao lado é o valor. Remova formatação (pontos/vírgulas) se necessário.
-- Entidade: Identifique quem recebeu ou pagou (ex: ENDE, Restaurante, etc).
-- Descrição: Profissional, ex: "Pagamento de Factura ENDE - Ref JAN/2026".
+INSTRUÇÕES:
+1. Identifique a INTENÇÃO do usuário:
+   - "register_transaction": Se ele descrever um gasto ou ganho.
+   - "generate_report": Se ele pedir saldo, gastos do dia/mês ou o que tem na conta.
+   - "analyze_finances": Se ele pedir conselhos, perguntar onde gasta mais ou pedir um resumo.
+   - "manage_categories": Se ele pedir para listar categorias ou criar uma nova.
+   - "chat": Se for apenas uma saudação ou conversa geral sem ação financeira.
 
-Retorne APENAS o JSON no formato:
-
-Se for SUCESSO:
+2. Responda em JSON rigoroso com este formato:
 {{
-    "Status": "success",
-    "Data": "YYYY-MM-DD",
-    "Tipo": "Receita" ou "Despesa",
-    "Valor": 0.0,
-    "Descricao": "descrição concisa",
-    "Categoria_nome": "categoria da lista"
+    "intent": "register_transaction" | "generate_report" | "analyze_finances" | "manage_categories" | "chat",
+    "data": {{ ... dados específicos da ação como 'Valor', 'Tipo', 'Categoria_nome', 'nova_categoria_nome' ... }},
+    "response": "Uma resposta educada, curta e profissional em português para enviar de volta ao WhatsApp."
 }}
 
-Se for DÚVIDA/FALTA DE DADOS:
-{{
-    "Status": "question",
-    "Message": "Uma pergunta educada e curta para o usuário solicitando o dado que falta (ex: 'Não consegui encontrar o valor total na imagem, pode dizer-me quanto foi?')"
-}}"""
-        
+REGRAS DE RESPOSTA:
+- Se for "register_transaction", extraia os dados como antes.
+- Se for "generate_report" ou "analyze_finances", use o CONTEXTO FINANCEIRO fornecido para responder com precisão na chave "response".
+- Seja conciso e use emojis de forma elegante.
+- Se não entender, defina intent como "chat" e peça para ser mais específico no campo "response"."""
         
         try:
-            # Seleciona o provedor e faz a chamada
-            if selected_provider == "deepseek":
+            if self.provider == "deepseek":
                 content = self._call_deepseek(prompt)
             else:
                 content = self._call_ollama(prompt)
@@ -209,61 +204,63 @@ Se for DÚVIDA/FALTA DE DADOS:
             if not content:
                 return None
             
-            # Extração de JSON do conteúdo via Regex
             import re
             json_match = re.search(r'\{.*\}', content, re.DOTALL)
             if json_match:
                 import json
                 raw_data = json.loads(json_match.group(0))
                 
-                # Normalizar chaves para serem case-insensitive
-                parsed = {k.lower(): v for k, v in raw_data.items()}
+                # Normalização mínima de chaves
+                intent = raw_data.get("intent", "chat")
+                data = raw_data.get("data", {})
+                response_text = raw_data.get("response", "Entendido.")
                 
-                # Mapeamento Automático de Categoria_id
-                cat_name = parsed.get("categoria_nome")
-                cat_id = None
-                for c in categories:
-                    if str(c['nome']).lower() == str(cat_name).lower():
-                        cat_id = c['Id']
-                        break
-                
-                # Limpeza e Conversão de Valor (Robusto)
-                raw_valor = parsed.get("valor", 0.0)
-                try:
-                    if isinstance(raw_valor, str):
-                        # Remove símbolos de moeda, espaços e ajusta separadores decimais (PT/BR -> US)
-                        clean_valor = raw_valor.replace('Kz', '').replace('€', '').replace('$', '').strip()
-                        # Se houver pontos e vírgulas, assume-se formato europeu (1.234,56)
-                        if ',' in clean_valor and '.' in clean_valor:
-                            clean_valor = clean_valor.replace('.', '').replace(',', '.')
-                        elif ',' in clean_valor:
-                            clean_valor = clean_valor.replace(',', '.')
-                        
-                        # Remove qualquer caractere que não seja número ou ponto
-                        import re
-                        clean_valor = re.sub(r'[^-0-9.]', '', clean_valor)
-                        valor_float = float(clean_valor)
-                    else:
-                        valor_float = float(raw_valor)
-                except:
-                    valor_float = 0.0
+                # Processamento extra para registo (mesma lógica robusta de antes)
+                if intent == "register_transaction":
+                    # Mapear categoria_id
+                    cat_name = data.get("Categoria_nome")
+                    cat_id = None
+                    if cat_name:
+                        for c in categories:
+                            if str(c['nome']).lower() == str(cat_name).lower():
+                                cat_id = c['Id']
+                                break
+                    data["Categoria_id"] = cat_id
+                    
+                    # Normalizar valor
+                    raw_valor = data.get("Valor", 0.0)
+                    try:
+                        if isinstance(raw_valor, str):
+                            clean = re.sub(r'[^-0-9,.]', '', raw_valor).replace(',', '.')
+                            data["Valor"] = float(clean)
+                        else:
+                            data["Valor"] = float(raw_valor)
+                    except:
+                        data["Valor"] = 0.0
+                    
+                    if "Data" not in data:
+                        data["Data"] = today
+                    if "Tipo" not in data:
+                        data["Tipo"] = "Despesa"
 
-                # Garantir chaves esperadas pelo view (Case-blind check)
-                normalized = {
-                    "Status": parsed.get("status", "success"),
-                    "Message": parsed.get("message", ""),
-                    "Data": parsed.get("data", today),
-                    "Tipo": parsed.get("tipo", "Despesa"),
-                    "Valor": valor_float,
-                    "Descricao": parsed.get("descricao", "Transação via IA"),
-                    "Categoria_nome": parsed.get("categoria_nome"),
-                    "Categoria_id": cat_id
+                return {
+                    "intent": intent,
+                    "data": data,
+                    "response": response_text
                 }
-                return normalized
             return None
         except Exception as e:
-            print(f"Erro na IA: {e}")
+            print(f"Erro na IA Process: {e}")
             return None
+
+    def parse_transaction(self, text, categories, provider=None):
+        """Método legado mantendo compatibilidade se necessário (pode ser removido futuramente)."""
+        # Em vez de duplicar, chamamos o novo método com contexto vazio para manter o fluxo antigo se disparado por outras partes
+        res = self.process_user_intent(text, "Sem contexto detalhado.", categories)
+        if res and res['intent'] == "register_transaction":
+            res['data']['Status'] = 'success'
+            return res['data']
+        return {"Status": "error"}
 
 class DocumentService:
     """

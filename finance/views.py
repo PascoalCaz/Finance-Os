@@ -180,6 +180,52 @@ def dashboard(request):
         print(traceback.format_exc())
         return render(request, 'finance/error.html', {'error': f"Erro ao carregar Dashboard Analítico: {e}"})
 
+def get_financial_context():
+    """
+    Gera um resumo textual do estado financeiro atual para a IA.
+    """
+    try:
+        data = client.get_transactions()
+        transactions = data.get('list', [])
+        
+        def to_float(val):
+            try:
+                if isinstance(val, (int, float)): return float(val)
+                if not val: return 0.0
+                return float(str(val).replace('.', '').replace(',', '.'))
+            except: return 0.0
+
+        income = sum(to_float(t.get('Valor')) for t in transactions if t.get('Tipo') == 'Receita')
+        expenses = sum(to_float(t.get('Valor')) for t in transactions if t.get('Tipo') == 'Despesa')
+        
+        from collections import defaultdict
+        cat_totals = defaultdict(float)
+        for t in transactions:
+            if t.get('Tipo') == 'Despesa':
+                relations = t.get('_nc_m2m_Financeiro_Categoria', [])
+                cat_name = relations[0].get('Categoria', {}).get('nome', 'Outros') if relations else 'Outros'
+                cat_totals[cat_name] += to_float(t.get('Valor'))
+        
+        top_cats = sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:3]
+        top_cats_str = ", ".join([f"{c}: {v} Kz" for c, v in top_cats])
+        
+        recent = []
+        for t in transactions[:5]:
+            recent.append(f"- {t.get('Data')}: {t.get('Descricao')} ({t.get('Valor')} Kz)")
+        
+        context = f"""
+        Saldo Atual: {income - expenses} Kz
+        Total Receitas: {income} Kz
+        Total Despesas: {expenses} Kz
+        Maiores Gastos por Categoria: {top_cats_str}
+        Transações Recentes:
+        {"\n".join(recent)}
+        """
+        return context
+    except Exception as e:
+        print(f"Erro ao gerar contexto: {e}")
+        return "Erro ao carregar contexto financeiro."
+
 # ==========================================
 # GESTÃO DE TRANSAÇÕES (CRUD)
 # ==========================================
@@ -442,38 +488,41 @@ def whatsapp_webhook(request):
             
             if text_context:
                 print(f"Processando mensagem de {user_number}: {text_context[:50]}...")
-                # 1. Buscar categorias
-                categories = client.get_categories().get('list', [])
+                # 1. Obter Contexto e Categorias
+                financial_context = get_financial_context()
+                categories_data = client.get_categories().get('list', [])
                 
-                # 2. IA para interpretar
-                ai_result = ai_client.parse_transaction(text_context, categories)
+                # 2. IA para interpretar intenção e contexto
+                ai_result = ai_client.process_user_intent(text_context, financial_context, categories_data)
                 
-                if ai_result and ai_result.get('Status') == 'success':
-                    print(f"IA Sucesso: {ai_result.get('Descricao')} - {ai_result.get('Valor')} Kz")
-                    # 3. Registrar Diretamente
-                    client.create_transaction({
-                        'Data': ai_result.get('Data'),
-                        'Tipo': ai_result.get('Tipo'),
-                        'Valor': ai_result.get('Valor'),
-                        'Descricao': ai_result.get('Descricao'),
-                        'Categoria_id': ai_result.get('Categoria_id')
-                    })
+                if ai_result:
+                    intent = ai_result.get('intent')
+                    data = ai_result.get('data', {})
+                    response_msg = ai_result.get('response', "Entendido!")
                     
-                    # 4. Enviar Resposta (Usando a instância que recebeu a mensagem)
+                    print(f"Intenção Detectada: {intent}")
+                    
+                    # 3. Executar Ação baseada na Intenção
+                    if intent == "register_transaction":
+                        client.create_transaction({
+                            'Data': data.get('Data'),
+                            'Tipo': data.get('Tipo'),
+                            'Valor': data.get('Valor'),
+                            'Descricao': data.get('Descricao'),
+                            'Categoria_id': data.get('Categoria_id')
+                        })
+                        send_event('finance', 'message', {'text': 'refresh'})
+                    
+                    elif intent == "manage_categories" and data.get("nova_categoria_nome"):
+                        new_cat_name = data.get("nova_categoria_nome")
+                        client.create_category({"nome": new_cat_name})
+                        print(f"Nova categoria criada via WhatsApp: {new_cat_name}")
+                        # Opcionalmente enviar evento se houver listener na lista de categorias
+                    
+                    # 4. Enviar Resposta via WhatsApp
                     evo = EvolutionService()
-                    msg = (
-                        f"✅ *Registro Automático*\n\n"
-                        f"📝 {ai_result.get('Descricao')}\n"
-                        f"💰 {ai_result.get('Valor')} Kz\n"
-                        f"📂 {ai_result.get('Categoria_nome')}\n"
-                        f"📅 {ai_result.get('Data')}\n\n"
-                        f"_Registrado via FinanceOS AI_ 🏹"
-                    )
-                    print(f"Enviando para {user_number} via instância '{instance_name}'")
-                    evo.send_message(user_number, msg, instance_id=instance_name)
-                    
-                    # 5. Notificar Real-time via SSE
-                    send_event('finance', 'message', {'text': 'refresh'})
+                    print(f"Enviando resposta para {user_number} via instância '{instance_name}'")
+                    evo.send_message(user_number, response_msg, instance_id=instance_name)
                     
         return JsonResponse({"status": "success"})
     except Exception as e:
