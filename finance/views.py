@@ -413,6 +413,8 @@ def whatsapp_webhook(request):
         if event == 'messages.upsert':
             data = payload.get('data', {})
             instance_id_payload = payload.get('instanceId') or data.get('instanceId')
+            # Nome da instância para enviar mensagens (Evolution API usa o nome, não o UUID)
+            instance_name = payload.get('instance')  # Ex: 'NOTE 14 JUNIOR'
             
             # 1. Verificar Filtro de Instância
             settings = AppSettings.get_settings()
@@ -427,7 +429,8 @@ def whatsapp_webhook(request):
                 return JsonResponse({"status": "ignored"})
 
             remote_jid = key_obj.get('remoteJid', '')
-            user_number = remote_jid # Usar o JID completo para garantir entrega (LID/JID)
+            # Extrair apenas o número (sem @s.whatsapp.net ou @lid)
+            user_number = remote_jid.split('@')[0] if remote_jid else ''
             
             text_context = ""
             if 'conversation' in message_obj:
@@ -466,7 +469,8 @@ def whatsapp_webhook(request):
                         f"📅 {ai_result.get('Data')}\n\n"
                         f"_Registrado via FinanceOS AI_ 🏹"
                     )
-                    evo.send_message(user_number, msg, instance_id=instance_id_payload)
+                    print(f"Enviando para {user_number} via instância '{instance_name}'")
+                    evo.send_message(user_number, msg, instance_id=instance_name)
                     
                     # 5. Notificar Real-time via SSE
                     send_event('finance', 'message', {'text': 'refresh'})
