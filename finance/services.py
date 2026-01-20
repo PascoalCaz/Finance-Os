@@ -1,6 +1,7 @@
 import requests
 import os
 import io
+from decouple import config, UndefinedValueError
 from dotenv import load_dotenv
 
 # Dependências para OCR e PDF
@@ -30,12 +31,17 @@ class NocoDBClient:
     Gere Transações e Categorias.
     """
     def __init__(self):
-        # Configurações extraídas do ambiente
-        self.base_url = os.getenv("NOCODB_BASE_URL")
-        self.base_id = os.getenv("NOCODB_BASE_ID")
-        self.token = os.getenv("NOCODB_TOKEN")
-        self.table_financeiro = os.getenv("TABLE_ID_FINANCEIRO")
-        self.table_categoria = os.getenv("TABLE_ID_CATEGORIA")
+        # Configurações extraídas do ambiente usando decouple para maior robustez
+        self.base_url = config("NOCODB_BASE_URL", default="https://eden-nocodb.w2zld5.easypanel.host")
+        self.base_id = config("NOCODB_BASE_ID", default=None)
+        self.token = config("NOCODB_TOKEN", default=None)
+        self.table_financeiro = config("TABLE_ID_FINANCEIRO", default=None)
+        self.table_categoria = config("TABLE_ID_CATEGORIA", default=None)
+        
+        # Validação crítica para evitar erros 422 silenciosos
+        if not self.base_id or self.base_id == "None":
+            print("CRITICAL ERROR: NOCODB_BASE_ID não encontrado no ambiente (.env)!")
+        
         self.headers = {
             "xc-token": self.token,
             "Content-Type": "application/json",
@@ -419,9 +425,9 @@ class DocumentService:
 class EvolutionService:
     """Serviço para integração com WhatsApp via Evolution API."""
     def __init__(self):
-        self.url = os.getenv('EVOLUTION_API_URL')
-        self.key = os.getenv('EVOLUTION_API_KEY')
-        self.instance = os.getenv('EVOLUTION_INSTANCE')
+        self.url = config('EVOLUTION_API_URL', default=None)
+        self.key = config('EVOLUTION_API_KEY', default=None)
+        self.instance = config('EVOLUTION_INSTANCE', default=None)
 
     def send_message(self, number, message, instance_id=None):
         """Envia mensagem de texto via WhatsApp (Dinamiza a instância se necessário)."""
