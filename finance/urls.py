@@ -25,6 +25,10 @@ urlpatterns = [
     # Configurações do Sistema
     path('settings/', views.settings_view, name='settings'),
     
+    # Relatórios e Exportação
+    path('reports/pdf/', views.export_pdf, name='export_pdf'),
+    path('reports/excel/', views.export_excel, name='export_excel'),
+
     # SSE - Real-time Events
     path('events/', django_eventstream.views.events, {'channels': ['finance']}, name='events'),
 ]

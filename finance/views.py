@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 import json
 from .services import NocoDBClient, AIClient, DocumentService, EvolutionService
+from .reports import ReportService
 from .models import AppSettings
 from django_eventstream import send_event
 
@@ -547,35 +548,16 @@ def whatsapp_webhook(request):
                 else:
                     print(f"✅ Usuário '{remote_jid}' Autorizado.")
             
-            # --- Extração de Texto de Mensagens com Mídia ---
             text_context = ""
-            base64_data = payload.get('data', {}).get('base64')
-            
             if 'conversation' in message_obj:
                 text_context = message_obj['conversation']
             elif 'extendedTextMessage' in message_obj:
                 text_context = message_obj['extendedTextMessage'].get('text', '')
             elif 'imageMessage' in message_obj:
-                caption = message_obj['imageMessage'].get('caption', '')
-                text_context = caption
-                if base64_data:
-                    from .services import DocumentService
-                    extracted = DocumentService.extract_text_from_base64(base64_data, 'image/jpeg')
-                    if extracted:
-                        text_context = f"{caption}\n\n[Texto da imagem]:\n{extracted}" if caption else extracted
-            elif 'documentMessage' in message_obj:
-                caption = message_obj['documentMessage'].get('caption', '')
-                text_context = caption
-                mimetype = message_obj['documentMessage'].get('mimetype', '')
-                if base64_data:
-                    from .services import DocumentService
-                    extracted = DocumentService.extract_text_from_base64(base64_data, mimetype)
-                    if extracted:
-                        text_context = f"{caption}\n\n[Conteúdo do documento]:\n{extracted}" if caption else extracted
+                text_context = message_obj['imageMessage'].get('caption', 'Documento WhatsApp')
             
             if text_context:
-                text_context = text_context.strip()
-                print(f"Processando mensagem de {user_number}: {text_context[:100]}...")
+                print(f"Processando mensagem de {user_number}: {text_context[:50]}...")
                 # 1. Obter Contexto e Categorias
                 financial_context = get_financial_context()
                 categories_data = client.get_categories().get('list', [])
@@ -607,6 +589,26 @@ def whatsapp_webhook(request):
                         print(f"Nova categoria criada via WhatsApp: {new_cat_name}")
                         # Opcionalmente enviar evento se houver listener na lista de categorias
                     
+                    elif intent == "document_report":
+                        fmt = data.get("format", "pdf").lower()
+                        # Obter dados para o relatório
+                        trans_data = client.get_transactions().get('list', [])
+                        
+                        # Simular resumo para o PDF
+                        income = sum(float(t.get('Valor', 0)) for t in trans_data if t.get('Tipo') == 'Receita')
+                        expenses = sum(float(t.get('Valor', 0)) for t in trans_data if t.get('Tipo') == 'Despesa')
+                        sum_data = {'balance': income - expenses, 'income': income, 'expenses': expenses}
+                        
+                        evo = EvolutionService()
+                        if fmt == "excel":
+                            file_buf = ReportService.generate_excel_report(trans_data)
+                            file_name = f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.xlsx"
+                            evo.send_media(user_number, file_buf, file_name, media_type="document", caption="Aqui está o seu relatório Excel! 📊", instance_id=instance_name)
+                        else:
+                            file_buf = ReportService.generate_pdf_report(trans_data, sum_data)
+                            file_name = f"Relatorio_Financeiro_{datetime.now().strftime('%Y%m%d')}.pdf"
+                            evo.send_media(user_number, file_buf, file_name, media_type="document", caption="Aqui está o seu relatório PDF! 📑", instance_id=instance_name)
+
                     # 4. Enviar Resposta via WhatsApp
                     evo = EvolutionService()
                     print(f"Enviando resposta para {user_number} via instância '{instance_name}'")
@@ -616,3 +618,25 @@ def whatsapp_webhook(request):
     except Exception as e:
         print(f"Erro Webhook: {e}")
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required
+def export_pdf(request):
+    """Gera e retorna um relatório PDF para download."""
+    data = client.get_transactions().get('list', [])
+    income = sum(float(t.get('Valor', 0)) for t in data if t.get('Tipo') == 'Receita')
+    expenses = sum(float(t.get('Valor', 0)) for t in data if t.get('Tipo') == 'Despesa')
+    summary = {'balance': income - expenses, 'income': income, 'expenses': expenses}
+    
+    pdf_buf = ReportService.generate_pdf_report(data, summary)
+    response = HttpResponse(pdf_buf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Relatorio_Financeiro_{datetime.now().strftime("%Y%m%d")}.pdf"'
+    return response
+
+@login_required
+def export_excel(request):
+    """Gera e retorna um relatório Excel para download."""
+    data = client.get_transactions().get('list', [])
+    xlsx_buf = ReportService.generate_excel_report(data)
+    response = HttpResponse(xlsx_buf, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="Relatorio_Financeiro_{datetime.now().strftime("%Y%m%d")}.xlsx"'
+    return response

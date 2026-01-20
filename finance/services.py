@@ -291,24 +291,18 @@ DATA ATUAL: {today}
 ENTRADA DO USUÁRIO: "{text}"
 
 INSTRUÇÕES:
-1. Identifique a INTENÇÃO do usuário:
+3. INTENÇÕES ESPECÍFICAS:
    - "register_transaction": Se ele descrever um gasto ou ganho.
-   - "generate_report": Se ele pedir saldo, gastos do dia/mês ou o que tem na conta.
-   - "analyze_finances": Se ele pedir conselhos, perguntar onde gasta mais ou pedir um resumo.
-   - "manage_categories": Se ele pedir para listar categorias ou criar uma nova.
-   - "chat": Se for apenas uma saudação ou conversa geral sem ação financeira.
-
-2. Responda em JSON rigoroso com este formato:
-{{
-    "intent": "register_transaction" | "generate_report" | "analyze_finances" | "manage_categories" | "chat",
-    "data": {{ ... dados específicos da ação como 'Valor', 'Tipo', 'Categoria_nome', 'nova_categoria_nome' ... }},
-    "response": "Uma resposta educada, curta e profissional em português para enviar de volta ao WhatsApp."
-}}
+   - "generate_report": Se ele pedir saldo, gastos do dia/mês ou um resumo textual.
+   - "document_report": Se ele pedir explicitamente um "PDF", "arquivo", "relatório para imprimir" ou "Excel". No campo "data", inclua "format": "pdf" ou "excel".
+   - "analyze_finances": Conselhos ou análise profunda (onde gasta mais, etc).
+   - "manage_categories": Listar ou criar categorias.
+   - "chat": Conversa geral.
 
 REGRAS DE RESPOSTA:
-- Se for "register_transaction", extraia os dados como antes.
+- Se for "document_report", no campo "response" diga algo como "Claro! Estou a gerar o seu relatório [PDF/Excel] agora mesmo..."
 - Se for "generate_report" ou "analyze_finances", use o CONTEXTO FINANCEIRO fornecido para responder com precisão na chave "response".
-- Seja conciso e use emojis de forma elegante.
+- Seja conciso e use emojis elegantes.
 - Se não entender, defina intent como "chat" e peça para ser mais específico no campo "response"."""
         
         try:
@@ -429,44 +423,6 @@ class DocumentService:
         text = pytesseract.image_to_string(img)
         return text
 
-    @staticmethod
-    def extract_text_from_base64(base64_data, mimetype):
-        """
-        Extrai texto de um stream base64 (Imagens ou PDF).
-        """
-        import base64
-        import io
-        
-        if not base64_data:
-            return ""
-
-        try:
-            # Decodificar base64
-            file_bytes = base64.b64decode(base64_data)
-            file_stream = io.BytesIO(file_bytes)
-            
-            if 'pdf' in mimetype:
-                if not pdfplumber:
-                    return "Erro: pdfplumber não instalado."
-                text = ""
-                with pdfplumber.open(file_stream) as pdf:
-                    for page in pdf.pages:
-                        page_text = page.extract_text()
-                        if page_text:
-                            text += page_text + "\n"
-                return text
-            
-            elif 'image' in mimetype or 'jpeg' in mimetype or 'png' in mimetype:
-                if not pytesseract or not Image:
-                    return "Erro: pytesseract ou Pillow não instalados."
-                img = Image.open(file_stream)
-                return pytesseract.image_to_string(img)
-                
-            return ""
-        except Exception as e:
-            print(f"Erro na extração base64 ({mimetype}): {e}")
-            return ""
-
 class EvolutionService:
     """Serviço para integração com WhatsApp via Evolution API."""
     def __init__(self):
@@ -493,4 +449,31 @@ class EvolutionService:
             return res_json
         except Exception as e:
             print(f"Erro Crítico Evolution (Send): {e}")
+            return None
+
+    def send_media(self, number, file_content, file_name, media_type="document", caption="", instance_id=None):
+        """Envia arquivos (PDF, Excel, Imagem) via WhatsApp."""
+        target_instance = instance_id or self.instance
+        endpoint = f"{self.url}/message/sendMedia/{target_instance}"
+        
+        headers = {'apikey': self.key}
+        # Evolution API exige multipart/form-data para arquivos
+        files = {
+            'file': (file_name, file_content, 'application/octet-stream')
+        }
+        data = {
+            'number': number,
+            'mediatype': media_type,
+            'caption': caption,
+            'delay': '1200'
+        }
+        
+        try:
+            print(f"Enviando {media_type} para {number} via {target_instance}...")
+            response = requests.post(endpoint, files=files, data=data, headers=headers)
+            res_json = response.json()
+            print(f"Resposta Evolution Media: {res_json}")
+            return res_json
+        except Exception as e:
+            print(f"Erro Crítico Evolution (Media): {e}")
             return None
