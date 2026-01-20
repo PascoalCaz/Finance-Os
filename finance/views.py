@@ -482,9 +482,23 @@ def whatsapp_webhook(request):
             
             # 1. Verificar Filtro de Instância
             settings = AppSettings.get_settings()
-            if settings.whatsapp_instance_id and str(instance_id_payload) != str(settings.whatsapp_instance_id):
-                print(f"Webhook Ignorado: Instância {instance_id_payload} não corresponde à configurada ({settings.whatsapp_instance_id})")
-                return JsonResponse({"status": "ignored", "reason": "instance_mismatch"})
+            configured_id = str(settings.whatsapp_instance_id or "").strip()
+            
+            # IDs e Nomes recebidos (Pode variar conforme a versão da Evolution API)
+            received_id = str(payload.get('instanceId') or data.get('instanceId') or "").strip()
+            received_name = str(payload.get('instance') or "").strip()
+            
+            print(f"--- WEBHOOK WHATSAPP ---")
+            print(f"Recebido ID: '{received_id}', Nome: '{received_name}'")
+            print(f"Configurado: '{configured_id}'")
+
+            # Se houver algo configurado, validamos se bate com o ID ou com o Nome
+            if configured_id:
+                if configured_id != received_id and configured_id != received_name:
+                    print(f"❌ Webhook Ignorado: Mismatch de Instância.")
+                    return JsonResponse({"status": "ignored", "reason": "instance_mismatch"})
+                else:
+                    print(f"✅ Instância Autorizada.")
 
             message_obj = data.get('message', {})
             key_obj = data.get('key', {})

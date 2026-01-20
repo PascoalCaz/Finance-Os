@@ -22,8 +22,9 @@
 
             <form method="POST" class="space-y-4">
                 {% csrf_token %}
+                <input type="hidden" name="form_type" value="whatsapp_settings">
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Instance ID da Evolution API</label>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Instance ID ou Nome da Evolution API</label>
                     <input type="text" name="whatsapp_instance_id" 
                            value="{{ settings.whatsapp_instance_id|default:'' }}"
                            placeholder="Ex: bc8e8300-4686-4958-9c50-601a54808f76" 
