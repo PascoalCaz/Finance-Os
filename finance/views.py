@@ -443,7 +443,20 @@ def settings_view(request):
     settings = AppSettings.get_settings()
     
     if request.method == "POST":
-        settings.whatsapp_instance_id = request.POST.get("whatsapp_instance_id")
+        form_type = request.POST.get("form_type")
+        
+        if form_type == "ai_settings":
+            settings.default_ai_provider = request.POST.get("default_ai_provider")
+            settings.ollama_url = request.POST.get("ollama_url")
+            settings.ollama_model = request.POST.get("ollama_model")
+            settings.openai_api_key = request.POST.get("openai_api_key")
+            settings.deepseek_api_key = request.POST.get("deepseek_api_key")
+            settings.gemini_api_key = request.POST.get("gemini_api_key")
+            settings.anthropic_api_key = request.POST.get("anthropic_api_key")
+        else:
+            # WhatsApp Form (Old structure)
+            settings.whatsapp_instance_id = request.POST.get("whatsapp_instance_id")
+            
         settings.save()
         return redirect('settings')
         

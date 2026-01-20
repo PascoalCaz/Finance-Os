@@ -101,24 +101,25 @@ class NocoDBClient:
 
 class AIClient:
     """
-    Cliente para integração com LLMs (Ollama ou DeepSeek).
-    Utilizado para processar linguagem natural e extrair dados financeiros.
+    Cliente para integração com LLMs (Ollama, DeepSeek, OpenAI, Gemini, Anthropic).
     """
-    def __init__(self):
-        # Carrega a configuração do provedor
-        self.provider = os.getenv("AI_PROVIDER", "ollama").lower()
+    def __init__(self, provider=None):
+        from .models import AppSettings
+        self.settings = AppSettings.get_settings()
         
-        # Configurações Ollama
-        self.ollama_url = "https://eden-ollama.w2zld5.easypanel.host/v1"
-        self.ollama_model = "qwen2.5-coder:3b-instruct-q4_K_M"
+        # Provedor padrão (Sessão > Settings > Env)
+        self.provider = provider or self.settings.default_ai_provider or os.getenv("AI_PROVIDER", "ollama")
         
-        # Configurações DeepSeek (OpenAI-compatible)
-        self.deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-        self.deepseek_model = "deepseek-chat"
-        self.deepseek_url = "https://api.deepseek.com"
+        # Configurações dinâmicas
+        self.ollama_url = self.settings.ollama_url
+        self.ollama_model = self.settings.ollama_model
+        
+        self.deepseek_key = self.settings.deepseek_api_key or os.getenv("DEEPSEEK_API_KEY")
+        self.openai_key = self.settings.openai_api_key or os.getenv("OPENAI_API_KEY")
+        self.gemini_key = self.settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
+        self.anthropic_key = self.settings.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
 
     def _call_ollama(self, prompt):
-        """Chamada específica para o Ollama."""
         try:
             response = requests.post(
                 f"{self.ollama_url}/chat/completions",
@@ -136,22 +137,61 @@ class AIClient:
             return None
 
     def _call_deepseek(self, prompt):
-        """Chamada específica para o DeepSeek via biblioteca OpenAI."""
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=self.deepseek_key, base_url=self.deepseek_url)
-            
+            client = OpenAI(api_key=self.deepseek_key, base_url="https://api.deepseek.com")
             response = client.chat.completions.create(
-                model=self.deepseek_model,
-                messages=[
-                    {"role": "system", "content": "Você é um assistente financeiro útil."},
-                    {"role": "user", "content": prompt},
-                ],
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
                 stream=False
             )
             return response.choices[0].message.content
         except Exception as e:
             print(f"Erro no DeepSeek: {e}")
+            return None
+
+    def _call_openai(self, prompt):
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=self.openai_key)
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Erro no OpenAI: {e}")
+            return None
+
+    def _call_gemini(self, prompt):
+        try:
+            # Usando requisição direta via REST para evitar dependências pesadas
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        except Exception as e:
+            print(f"Erro no Gemini: {e}")
+            return None
+
+    def _call_anthropic(self, prompt):
+        try:
+            headers = {
+                "x-api-key": self.anthropic_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            payload = {
+                "model": "claude-3-5-sonnet-20240620",
+                "max_tokens": 1024,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            response = requests.post("https://api.anthropic.com/v1/messages", json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()['content'][0]['text']
+        except Exception as e:
+            print(f"Erro no Anthropic: {e}")
             return None
 
     def process_user_intent(self, text, financial_context, categories):
@@ -198,6 +238,12 @@ REGRAS DE RESPOSTA:
         try:
             if self.provider == "deepseek":
                 content = self._call_deepseek(prompt)
+            elif self.provider == "openai":
+                content = self._call_openai(prompt)
+            elif self.provider == "gemini":
+                content = self._call_gemini(prompt)
+            elif self.provider == "anthropic":
+                content = self._call_anthropic(prompt)
             else:
                 content = self._call_ollama(prompt)
 

@@ -11,6 +11,37 @@ class AppSettings(models.Model):
         verbose_name="ID da Instância WhatsApp",
         help_text="ID da instância da Evolution API (ex: bc8e8300-...)"
     )
+
+    # Configurações de IA
+    AI_PROVIDERS = [
+        ('ollama', 'Ollama (Qwen)'),
+        ('deepseek', 'DeepSeek'),
+        ('openai', 'OpenAI'),
+        ('gemini', 'Google Gemini'),
+        ('anthropic', 'Anthropic (Claude)'),
+    ]
+    
+    default_ai_provider = models.CharField(
+        max_length=20, 
+        choices=AI_PROVIDERS, 
+        default='ollama',
+        verbose_name="Provedor de IA Padrão"
+    )
+
+    ollama_url = models.URLField(
+        default="https://eden-ollama.w2zld5.easypanel.host/v1",
+        verbose_name="URL do Ollama"
+    )
+    ollama_model = models.CharField(
+        max_length=100,
+        default="qwen2.5-coder:3b-instruct-q4_K_M",
+        verbose_name="Modelo Ollama"
+    )
+
+    deepseek_api_key = models.CharField(max_length=255, blank=True, null=True, verbose_name="DeepSeek API Key")
+    openai_api_key = models.CharField(max_length=255, blank=True, null=True, verbose_name="OpenAI API Key")
+    gemini_api_key = models.CharField(max_length=255, blank=True, null=True, verbose_name="Gemini API Key")
+    anthropic_api_key = models.CharField(max_length=255, blank=True, null=True, verbose_name="Anthropic API Key")
     
     updated_at = models.DateTimeField(auto_now=True)
 
