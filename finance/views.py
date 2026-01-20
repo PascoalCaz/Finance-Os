@@ -330,78 +330,83 @@ def category_delete(request, record_id):
 @login_required
 def ai_process(request):
     """
-    Processa entrada de linguagem natural e documentos (PDF/Imagens) via IA.
-    Suporta modo conversacional (Chat).
+    Processa entrada de linguagem natural e documentos via IA.
+    Transformado para suporte a CHAT conversacional.
     """
     if request.method == "POST":
         text = request.POST.get("ai_text", "")
         auto_reg = request.POST.get("ai_auto") == "true"
-        is_chat = request.POST.get("is_chat") == "true"
+        provider = request.POST.get("ai_provider") or request.session.get('ai_provider')
         
-        # Gestão de Provedor AI (Persistência em Sessão)
-        provider = request.POST.get("ai_provider")
-        if provider:
-            request.session['ai_provider'] = provider
-        else:
-            provider = request.session.get('ai_provider')
+        # Gestão de Provedor
+        if provider: request.session['ai_provider'] = provider
             
+        # 1. Obter Contexto
         categories = client.get_categories().get('list', [])
+        financial_context = get_financial_context()
         
-        # 1. Recuperar Contexto de Documento (Sessão)
-        doc_text = request.session.get('ai_last_doc_text', "")
-        
-        # 2. Processamento de Novo Arquivo (OCR/PDF)
+        # 2. Processamento de Ficheiro (Se houver)
         uploaded_file = request.FILES.get('ai_file')
         if uploaded_file:
-            from .services import DocumentService
-            new_doc_text = DocumentService.extract_text(uploaded_file)
-            if new_doc_text:
-                doc_text = new_doc_text
-                request.session['ai_last_doc_text'] = doc_text  # Salva na sessão
-        
-        # 3. Preparar Prompt Final (Usuário + Documento)
-        full_text = text
-        if doc_text:
-            full_text = f"{text}\n\n[CONTEXTO DO DOCUMENTO]:\n{doc_text}"
+            doc_text = DocumentService.extract_text(uploaded_file)
+            if doc_text:
+                text = f"{text}\n\n[DOCUMENTO]:\n{doc_text}"
 
-        parsed = ai_client.parse_transaction(full_text, categories, provider=provider)
+        # 3. Chamar IA Conversacional
+        result = ai_client.process_user_intent(text, financial_context, categories)
         
-        if parsed:
-            # Caso de DÚVIDA/PERGUNTA da IA
-            if parsed.get("Status") == "question":
-                return render(request, 'finance/partials/ai_chat.html', {
-                    'message': parsed.get("Message"),
-                    'categories': categories,
-                    'auto_reg': auto_reg
+        if result:
+            intent = result.get('intent')
+            data = result.get('data', {})
+            response_text = result.get('response', "Não consegui processar o pedido.")
+
+            # Tratar Intenções
+            if intent == "register_transaction":
+                if auto_reg and data.get('Categoria_id'):
+                    client.create_transaction({
+                        "Data": data.get("Data"),
+                        "Tipo": data.get("Tipo"),
+                        "Valor": data.get("Valor"),
+                        "Descricao": data.get("Descricao"),
+                        "Categoria": int(data["Categoria_id"])
+                    })
+                    return render(request, 'finance/partials/ai_chat_bubble.html', {
+                        'response': f"✅ Registado: {data.get('Descricao')} ({data.get('Valor')} Kz)",
+                        'is_ai': True
+                    })
+                else:
+                    # Se não for auto ou faltar categoria, abre modal de confirmação
+                    parsed = {
+                        "Data": data.get("Data"),
+                        "Tipo": data.get("Tipo"),
+                        "Valor": data.get("Valor"),
+                        "Descricao": data.get("Descricao"),
+                        "Categoria_nome": data.get("Categoria_nome"),
+                        "Categoria_id": data.get("Categoria_id")
+                    }
+                    return render(request, 'finance/partials/ai_confirmation.html', {
+                        'parsed': parsed, 
+                        'categories': categories
+                    })
+
+            elif intent == "manage_categories" and data.get("nova_categoria_nome"):
+                new_name = data.get("nova_categoria_nome")
+                client.create_category({"nome": new_name})
+                return render(request, 'finance/partials/ai_chat_bubble.html', {
+                    'response': f"📂 Categoria '{new_name}' criada com sucesso!",
+                    'is_ai': True
                 })
-            
-            # Caso de SUCESSO na extração
-            if auto_reg:
-                data = {
-                    "Data": parsed.get("Data"),
-                    "Tipo": parsed.get("Tipo"),
-                    "Valor": float(parsed.get("Valor")),
-                    "Descricao": parsed.get("Descricao"),
-                }
-                if parsed.get("Categoria_id"):
-                    data["Categoria"] = int(parsed["Categoria_id"])
-                
-                client.create_transaction(data)
-                # Limpa o contexto da sessão após sucesso
-                request.session['ai_last_doc_text'] = ""
-                from django.http import HttpResponse
-                return HttpResponse('<script>window.location.reload();</script>')
-            
-            # Limpa o contexto da sessão (ou mantém se quiser continuar chat após confirmação)
-            # Para o fluxo de confirmação manual
-            return render(request, 'finance/partials/ai_confirmation.html', {
-                'parsed': parsed, 
-                'categories': categories
+
+            # Para reports, análise ou chat geral
+            return render(request, 'finance/partials/ai_chat_bubble.html', {
+                'response': response_text,
+                'is_ai': True
             })
-        else:
-            return render(request, 'finance/error.html', {
-                'error': 'A IA não entendeu o pedido. Tente ser mais específico ou carregar um documento mais legível.'
-            })
+
+        return render(request, 'finance/partials/ai_chat_bubble.html', {
+            'response': "Desculpa, tive um problema ao processar isso. Tenta novamente.",
+            'is_ai': True
+        })
     return redirect('dashboard')
 
 @login_required

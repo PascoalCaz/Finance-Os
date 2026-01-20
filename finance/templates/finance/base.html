@@ -110,6 +110,24 @@
       .mobile-sidebar.active {
         transform: translateX(0);
       }
+
+      /* Chat UI */
+      #chat-window {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        max-height: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+      #chat-window.active {
+        max-height: 500px;
+        opacity: 1;
+        pointer-events: auto;
+        margin-bottom: 1rem;
+      }
+      .chat-history {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+      }
     </style>
   </head>
   <body class="text-slate-900 min-h-screen flex overflow-x-hidden">
@@ -262,22 +280,47 @@
       </div>
     </div>
 
-    <!-- AI Bar -->
+    <!-- Chat Header / Commander Window -->
     <div
       class="fixed bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 z-[60] w-full max-w-2xl px-2 sm:px-4"
     >
+      <!-- Chat History -->
+      <div id="chat-window" class="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+        <div class="p-4 border-bottom border-slate-100 bg-slate-50 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold">F</div>
+                <span class="text-xs font-bold text-slate-800 font-headingCaps tracking-wider uppercase">FinanceOS Chat</span>
+            </div>
+            <button onclick="toggleChat()" class="p-1 hover:bg-slate-200 rounded-lg transition-colors text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="ai-chat-history" class="chat-history flex-1 overflow-y-auto p-4 min-h-[100px] max-h-[350px]">
+            <!-- Welcome Message -->
+            <div class="flex justify-start mb-4">
+                <div class="max-w-[85%] rounded-2xl px-4 py-2 bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200">
+                    <p class="text-xs sm:text-sm">Olá! Sou o seu assistente FinanceOS. Como posso ajudar com as suas finanças hoje?</p>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
       <div
         class="bg-slate-900 rounded-xl sm:rounded-2xl p-1 shadow-2xl flex items-center relative overflow-hidden"
       >
         <form
           hx-post="/ai/process/"
-          hx-target="#modal-content"
+          hx-target="#ai-chat-history"
+          hx-swap="beforeend transition:true"
           hx-indicator="#ai-loading-global"
+          hx-on::before-request="appendUserMessage()"
+          hx-on::after-request="scrollToBottom()"
           enctype="multipart/form-data"
           class="flex-1 flex items-center relative z-10"
         >
           {% csrf_token %}
-          <div class="pl-4 pr-1 text-blue-400">
+          <div class="pl-4 pr-1 text-blue-400 cursor-pointer" onclick="toggleChat()">
             <svg
               class="w-5 h-5"
               fill="none"
@@ -288,7 +331,7 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M13 10V3L4 14h7v7l9-11h-7z"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
               ></path>
             </svg>
           </div>
@@ -297,8 +340,9 @@
             name="ai_text"
             id="ai-input-field"
             autocomplete="off"
-            placeholder="Diga: 'Gastei nisto'..."
+            placeholder="Pergunte sobre saldo, despesas ou crie categorias..."
             class="flex-1 bg-transparent border-none text-white text-xs sm:text-sm focus:ring-0 py-3 sm:py-4 outline-none min-w-0"
+            onclick="openChat()"
           />
 
           <!-- Botão de Anexo -->
@@ -333,16 +377,8 @@
           <!-- Feedback de Arquivo -->
           <div id="file-feedback" class="hidden mr-4 animate-pulse">
             <span class="text-[9px] font-bold text-blue-400 uppercase"
-              >Ficheiro OK</span
+              >Anexo OK</span
             >
-          </div>
-
-          <!-- Seletor de Modelo (Hidden on small mobile) -->
-          <div class="hidden sm:flex items-center space-x-2 mr-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-slate-800 border border-slate-700">
-            <select name="ai_provider" class="bg-transparent border-none text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest focus:ring-0 cursor-pointer outline-none appearance-none">
-              <option value="ollama" {% if request.session.ai_provider == 'ollama' %}selected{% endif %}>Ollama</option>
-              <option value="deepseek" {% if request.session.ai_provider == 'deepseek' or not request.session.ai_provider %}selected{% endif %}>DeepSeek</option>
-            </select>
           </div>
 
           <!-- Toggle Auto-Reg -->
@@ -370,7 +406,7 @@
             type="submit"
             class="bg-blue-600 text-white px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold mr-1 hover:bg-blue-500 transition-colors"
           >
-            <span class="hidden sm:inline">Processar</span>
+            <span class="hidden sm:inline">Enviar</span>
             <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
           </button>
         </form>
@@ -382,7 +418,7 @@
             class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"
           ></div>
           <span class="text-xs font-bold text-white uppercase tracking-widest"
-            >A IA está a processar...</span
+            >A IA está a pensar...</span
           >
         </div>
       </div>
@@ -461,6 +497,39 @@
         const backdrop = document.getElementById('sidebar-backdrop');
         sidebar.classList.toggle('active');
         backdrop.classList.toggle('active');
+      }
+
+      // Chat Window Toggle
+      function toggleChat() {
+        document.getElementById('chat-window').classList.toggle('active');
+        scrollToBottom();
+      }
+
+      function openChat() {
+        document.getElementById('chat-window').classList.add('active');
+        scrollToBottom();
+      }
+
+      function scrollToBottom() {
+        const history = document.getElementById('ai-chat-history');
+        history.scrollTop = history.scrollHeight;
+      }
+
+      function appendUserMessage() {
+        const input = document.getElementById('ai-input-field');
+        if (!input.value.strip) return;
+        const text = input.value;
+        const history = document.getElementById('ai-chat-history');
+        
+        const bubble = `
+          <div class="flex justify-end mb-4 animate-in slide-in-from-bottom-2 duration-300">
+            <div class="max-w-[85%] rounded-2xl px-4 py-2 bg-blue-600 text-white rounded-tr-none shadow-sm">
+              <p class="text-xs sm:text-sm">${text}</p>
+            </div>
+          </div>
+        `;
+        history.insertAdjacentHTML('beforeend', bubble);
+        openChat();
       }
     </script>
   </body>
