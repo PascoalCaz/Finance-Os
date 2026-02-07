@@ -1,0 +1,11 @@
+{
+  "appId": "com.newgen.financeos",
+  "appName": "FinanceOS",
+  "webDir": "public",
+  "server": {
+    "url": "https://lavenderblush-leopard-281306.hostingersite.com/",
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  }
+}

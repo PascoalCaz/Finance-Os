@@ -1,0 +1,179 @@
+{
+  "name": "FinanceOS - Fix Inteligente (Auto-ID)",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "pascoalcaz@gmail.com"
+            },
+            {
+              "name": "tipo",
+              "value": "expense"
+            },
+            {
+              "name": "descricao",
+              "value": "Registo Automático com Fix Inteligente"
+            },
+            {
+              "name": "nome_conta",
+              "value": "Carteira"
+            },
+            {
+              "name": "nome_categoria",
+              "value": "Alimentação"
+            }
+          ],
+          "number": [
+            {
+              "name": "valor",
+              "value": 1000
+            }
+          ]
+        }
+      },
+      "id": "e6f43e62-c31a-4d92-824c-1e24a4ea839e",
+      "name": "Entrada de Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM users WHERE email = '{{ $node[\"Entrada de Dados\"].json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "e4f5a6b7-c8d9-4e1d-b2c3-d4e5f6g7h8i9",
+      "name": "Buscar User ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM accounts WHERE user_id = {{ $node[\"Buscar User ID\"].json[\"id\"] }} AND name LIKE '%{{ $node[\"Entrada de Dados\"].json[\"nome_conta\"] }}%' LIMIT 1;"
+      },
+      "id": "f5g6h7i8-j9k0-4l1m-n2o3-p4q5r6s7t8u9",
+      "name": "Buscar Account ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM categories WHERE user_id = {{ $node[\"Buscar User ID\"].json[\"id\"] }} AND name LIKE '%{{ $node[\"Entrada de Dados\"].json[\"nome_categoria\"] }}%' LIMIT 1;"
+      },
+      "id": "g7h8i9j0-k1l2-4m3n-o4p5-q6r7s8t9u0v1",
+      "name": "Buscar Category ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        600,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $node[\"Buscar User ID\"].json[\"id\"] }}, {{ $node[\"Buscar Account ID\"].json[\"id\"] }}, {{ $node[\"Buscar Category ID\"].json[\"id\"] }}, CURDATE(), {{ $node[\"Entrada de Dados\"].json[\"valor\"] }}, '{{ $node[\"Entrada de Dados\"].json[\"descricao\"] }}', '{{ $node[\"Entrada de Dados\"].json[\"tipo\"] }}', NOW(), NOW());"
+      },
+      "id": "a1b2c3d4-e5f6-4g7h-8i9j-0k1l2m3n4o5p",
+      "name": "Registrar Final",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE accounts SET balance = CASE WHEN '{{ $node[\"Entrada de Dados\"].json[\"tipo\"] }}' = 'income' THEN balance + {{ $node[\"Entrada de Dados\"].json[\"valor\"] }} ELSE balance - {{ $node[\"Entrada de Dados\"].json[\"valor\"] }} END WHERE id = {{ $node[\"Buscar Account ID\"].json[\"id\"] }};"
+      },
+      "id": "c3d4e5f6-a7b8-4c9d-d0e1-f2g3h4i5j6k7",
+      "name": "Atualizar Saldo",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Entrada de Dados": {
+      "main": [
+        [
+          {
+            "node": "Buscar User ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User ID": {
+      "main": [
+        [
+          {
+            "node": "Buscar Account ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar Category ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Account ID": {
+      "main": [
+        [
+          {
+            "node": "Registrar Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Category ID": {
+      "main": [
+        [
+          {
+            "node": "Registrar Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Final": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

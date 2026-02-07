@@ -1,0 +1,213 @@
+{
+  "name": "FinanceOS - Ferramentas de Elite (Receitas & Despesas)",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "tipo",
+              "value": "expense"
+            },
+            {
+              "name": "descricao",
+              "value": "Pagamento de Aluguel"
+            }
+          ],
+          "number": [
+            {
+              "name": "valor",
+              "value": 150000
+            },
+            {
+              "name": "account_id",
+              "value": 1
+            },
+            {
+              "name": "category_id",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "76e3d2a1-b8c9-4d2e-8f5a-3c1d9e2f4b5a",
+      "name": "Input Automático",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        380,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $node[\"Input Automático\"].json[\"tipo\"] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "expense"
+            },
+            {
+              "value2": "income"
+            }
+          ]
+        }
+      },
+      "id": "e4d5c6b7-a8f9-4e0d-b1c2-d3e4f5g6h7i8",
+      "name": "Tipo de Transação?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        600,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES (1, {{ $node[\"Input Automático\"].json[\"account_id\"] }}, {{ $node[\"Input Automático\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Input Automático\"].json[\"valor\"] }}, '{{ $node[\"Input Automático\"].json[\"descricao\"] }}', 'expense', NOW(), NOW());"
+      },
+      "id": "a1b2c3d4-e5f6-4g7h-8i9j-0k1l2m3n4o5p",
+      "name": "Registrar Despesa",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        820,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES (1, {{ $node[\"Input Automático\"].json[\"account_id\"] }}, {{ $node[\"Input Automático\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Input Automático\"].json[\"valor\"] }}, '{{ $node[\"Input Automático\"].json[\"descricao\"] }}', 'income', NOW(), NOW());"
+      },
+      "id": "b2c3d4e5-f6g7-4h8i-9j0k-1l2m3n4o5p6q",
+      "name": "Registrar Receita",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        820,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE accounts SET balance = balance - {{ $node[\"Input Automático\"].json[\"valor\"] }} WHERE id = {{ $node[\"Input Automático\"].json[\"account_id\"] }};"
+      },
+      "id": "c3d4e5f6-a7b8-4c9d-d0e1-f2g3h4i5j6k7",
+      "name": "Abater Saldo (-)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE accounts SET balance = balance + {{ $node[\"Input Automático\"].json[\"valor\"] }} WHERE id = {{ $node[\"Input Automático\"].json[\"account_id\"] }};"
+      },
+      "id": "d4e5f6g7-h8i9-4j0k-l1m2-n3o4p5q6r7s8",
+      "name": "Aumentar Saldo (+)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT balance FROM accounts WHERE id = {{ $node[\"Input Automático\"].json[\"account_id\"] }};"
+      },
+      "id": "f5g6h7i8-j9k0-4l1m-n2o3-p4q5r6s7t8u9",
+      "name": "Consultar Saldo Final",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Input Automático": {
+      "main": [
+        [
+          {
+            "node": "Tipo de Transação?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de Transação?": {
+      "main": [
+        [
+          {
+            "node": "Registrar Despesa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar Receita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Despesa": {
+      "main": [
+        [
+          {
+            "node": "Abater Saldo (-)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Receita": {
+      "main": [
+        [
+          {
+            "node": "Aumentar Saldo (+)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abater Saldo (-)": {
+      "main": [
+        [
+          {
+            "node": "Consultar Saldo Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aumentar Saldo (+)": {
+      "main": [
+        [
+          {
+            "node": "Consultar Saldo Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

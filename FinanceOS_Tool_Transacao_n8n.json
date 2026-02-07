@@ -1,0 +1,282 @@
+{
+  "name": "FinanceOS - Tool: Registrar Transação",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        336
+      ],
+      "id": "trigger-tool-001",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM u517481501_b.users WHERE email = '{{ $json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "2e0bbdab-9a70-48b4-bf53-c0b688efaf4b",
+      "name": "Buscar User ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        450,
+        450
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "a780bac1-d317-4eae-abb3-2ae4c5eeaf6a",
+      "name": "Juntar Dados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        650,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json[\"tipo\"] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "expense"
+            },
+            {
+              "value2": "income"
+            }
+          ]
+        }
+      },
+      "id": "12c5244a-ad60-4162-8f23-dfa6a39bb00a",
+      "name": "Tipo?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        850,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $node[\"Tipo?\"].json[\"id\"] }}, {{ $node[\"Tipo?\"].json[\"account_id\"] }}, {{ $node[\"Tipo?\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Tipo?\"].json[\"valor\"] }}, '{{ $node[\"Tipo?\"].json[\"descricao\"] }}', 'expense', NOW(), NOW());"
+      },
+      "id": "0caca2dd-9e0e-4260-969a-54568716d90d",
+      "name": "Reg. Despesa",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $node[\"Tipo?\"].json[\"id\"] }}, {{ $node[\"Tipo?\"].json[\"account_id\"] }}, {{ $node[\"Tipo?\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Tipo?\"].json[\"valor\"] }}, '{{ $node[\"Tipo?\"].json[\"descricao\"] }}', 'income', NOW(), NOW());"
+      },
+      "id": "dbc1bf82-1a27-44db-a4a3-a5ed501b8c16",
+      "name": "Reg. Receita",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        450
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = balance - {{ $node[\"Tipo?\"].json[\"valor\"] }} WHERE id = {{ $node[\"Tipo?\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Tipo?\"].json[\"id\"] }};"
+      },
+      "id": "6df942f1-28c6-4427-8f0b-ed3dc385ea4b",
+      "name": "Subtrair Saldo",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        200
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = balance + {{ $node[\"Tipo?\"].json[\"valor\"] }} WHERE id = {{ $node[\"Tipo?\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Tipo?\"].json[\"id\"] }};"
+      },
+      "id": "d6c50020-653e-4406-b35c-369c52046651",
+      "name": "Somar Saldo",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        450
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT balance FROM u517481501_b.accounts WHERE id = {{ $node[\"Tipo?\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Tipo?\"].json[\"id\"] }};"
+      },
+      "id": "3642672e-1c86-48ba-841c-1183ec752012",
+      "name": "Saldo Final",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        336
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Juntar Dados",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar User ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User ID": {
+      "main": [
+        [
+          {
+            "node": "Juntar Dados",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Dados": {
+      "main": [
+        [
+          {
+            "node": "Tipo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo?": {
+      "main": [
+        [
+          {
+            "node": "Reg. Despesa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reg. Receita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reg. Despesa": {
+      "main": [
+        [
+          {
+            "node": "Subtrair Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reg. Receita": {
+      "main": [
+        [
+          {
+            "node": "Somar Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subtrair Saldo": {
+      "main": [
+        [
+          {
+            "node": "Saldo Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Somar Saldo": {
+      "main": [
+        [
+          {
+            "node": "Saldo Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "122ce749ad5f4a9974fb262518126cb30007092d87ac43dd4bdfca8beaafaa6b"
+  }
+}

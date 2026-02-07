@@ -1,0 +1,199 @@
+{
+  "name": "FinanceOS - Criar Categorias e Contas",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "pascoalcaz@gmail.com"
+            },
+            {
+              "name": "operacao",
+              "value": "criar_categoria"
+            },
+            {
+              "name": "nome",
+              "value": "Nova Categoria"
+            },
+            {
+              "name": "tipo",
+              "value": "expense"
+            },
+            {
+              "name": "tipo_conta",
+              "value": "checking"
+            },
+            {
+              "name": "banco",
+              "value": "BAI"
+            },
+            {
+              "name": "icon",
+              "value": "💰"
+            },
+            {
+              "name": "cor",
+              "value": "#FF5733"
+            }
+          ],
+          "number": [
+            {
+              "name": "saldo_inicial",
+              "value": 0
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4297c6d-bf3a-4ae2-8341-0dbcb8bbf998",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM u517481501_b.users WHERE email = '{{ $json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "7371b9e7-da27-4b3f-bb86-757901e82fd4",
+      "name": "Buscar User",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        400,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "46c49582-8170-4e06-b0e3-20e932d737a0",
+      "name": "Juntar",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json[\"operacao\"] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "criar_categoria"
+            },
+            {
+              "value2": "criar_conta"
+            }
+          ]
+        }
+      },
+      "id": "d4afe4a7-ea04-4280-8c1b-beb1ed9cf853",
+      "name": "O quê?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.categories (user_id, name, type, icon, color, created_at, updated_at) VALUES ({{ $node[\"O quê?\"].json[\"id\"] }}, '{{ $node[\"O quê?\"].json[\"nome\"] }}', '{{ $node[\"O quê?\"].json[\"tipo\"] }}', '{{ $node[\"O quê?\"].json[\"icon\"] }}', '{{ $node[\"O quê?\"].json[\"cor\"] }}', NOW(), NOW());"
+      },
+      "id": "009cb378-6fc4-4171-974f-e4c60a366a80",
+      "name": "Criar Categoria",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.accounts (user_id, name, type, bank_name, balance, currency, created_at, updated_at) VALUES ({{ $node[\"O quê?\"].json[\"id\"] }}, '{{ $node[\"O quê?\"].json[\"nome\"] }}', '{{ $node[\"O quê?\"].json[\"tipo_conta\"] }}', '{{ $node[\"O quê?\"].json[\"banco\"] }}', {{ $node[\"O quê?\"].json[\"saldo_inicial\"] }}, 'AOA', NOW(), NOW());"
+      },
+      "id": "897b9f27-47f4-4ed2-9c3c-9287e349237e",
+      "name": "Criar Conta",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Buscar User",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Juntar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User": {
+      "main": [
+        [
+          {
+            "node": "Juntar",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar": {
+      "main": [
+        [
+          {
+            "node": "O quê?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "O quê?": {
+      "main": [
+        [
+          {
+            "node": "Criar Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criar Conta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

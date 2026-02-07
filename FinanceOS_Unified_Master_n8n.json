@@ -1,0 +1,324 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM u517481501_b.users WHERE email = '{{ $json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "fdda889a-7bb0-4015-a0c1-f5c080744bc6",
+      "name": "Buscar User ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        512
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "pascoalcaz@gmail.com"
+            },
+            {
+              "name": "tipo",
+              "value": "expense"
+            },
+            {
+              "name": "descricao",
+              "value": "Transação Unificada via n8n"
+            }
+          ],
+          "number": [
+            {
+              "name": "valor",
+              "value": 5000
+            },
+            {
+              "name": "account_id",
+              "value": 1
+            },
+            {
+              "name": "category_id",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bf7718fb-daef-432b-88b2-e3ffe0f29279",
+      "name": "Input Automático1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "8e759988-49da-4793-95af-f0d682da2b47",
+      "name": "Juntar Dados1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json[\"tipo\"] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "expense"
+            },
+            {
+              "value2": "income"
+            }
+          ]
+        }
+      },
+      "id": "8fbeecfe-b9d1-4c42-ba35-c61f3f59645f",
+      "name": "Tipo de Transação?1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $json[\"id\"] }}, {{ $json[\"account_id\"] }}, {{ $json[\"category_id\"] }}, CURDATE(), {{ $json[\"valor\"] }}, '{{ $json[\"descricao\"] }}', 'expense', NOW(), NOW());"
+      },
+      "id": "841d1ae7-92ae-4518-b5e4-27cca83821e2",
+      "name": "Registrar Despesa1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        304
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $json[\"id\"] }}, {{ $json[\"account_id\"] }}, {{ $json[\"category_id\"] }}, CURDATE(), {{ $json[\"valor\"] }}, '{{ $json[\"descricao\"] }}', 'income', NOW(), NOW());"
+      },
+      "id": "c8001448-cb06-40b8-be55-50f89243bd6f",
+      "name": "Registrar Receita1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        512
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT balance FROM accounts WHERE id = {{ $node[\"Input Automático\"].json[\"account_id\"] }};"
+      },
+      "id": "7d4cf515-ea0b-4a33-804a-d9a6603a6c02",
+      "name": "Consultar Saldo Final1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        3136,
+        400
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = balance - {{ $json[\"valor\"] }} WHERE id = {{ $json[\"account_id\"] }} AND user_id = {{ $json[\"id\"] }};"
+      },
+      "id": "17864a6a-2e9d-432f-a438-4ab885936922",
+      "name": "Abater Saldo (-)1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        2896,
+        304
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = balance + {{ $json[\"valor\"] }} WHERE id = {{ $json[\"account_id\"] }} AND user_id = {{ $json[\"id\"] }};"
+      },
+      "id": "308df6b3-176e-4af2-b9ff-bc4c17d4371f",
+      "name": "Aumentar Saldo (+)1",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        2896,
+        512
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Buscar User ID": {
+      "main": [
+        [
+          {
+            "node": "Juntar Dados1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Input Automático1": {
+      "main": [
+        [
+          {
+            "node": "Buscar User ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Juntar Dados1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar Dados1": {
+      "main": [
+        [
+          {
+            "node": "Tipo de Transação?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de Transação?1": {
+      "main": [
+        [
+          {
+            "node": "Registrar Despesa1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar Receita1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Despesa1": {
+      "main": [
+        [
+          {
+            "node": "Abater Saldo (-)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Receita1": {
+      "main": [
+        [
+          {
+            "node": "Aumentar Saldo (+)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abater Saldo (-)1": {
+      "main": [
+        [
+          {
+            "node": "Consultar Saldo Final1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aumentar Saldo (+)1": {
+      "main": [
+        [
+          {
+            "node": "Consultar Saldo Final1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Input Automático1": [
+      {
+        "valor": 5000,
+        "account_id": 1,
+        "category_id": 1,
+        "email": "pascoalcaz@gmail.com",
+        "tipo": "expense",
+        "descricao": "Transação Unificada via n8n"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "122ce749ad5f4a9974fb262518126cb30007092d87ac43dd4bdfca8beaafaa6b"
+  }
+}

@@ -1,0 +1,173 @@
+{
+  "name": "FinanceOS - Listar Categorias e Contas",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "pascoalcaz@gmail.com"
+            },
+            {
+              "name": "operacao",
+              "value": "listar_categorias"
+            },
+            {
+              "name": "filtro_tipo",
+              "value": "expense"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4297c6d-bf3a-4ae2-8341-0dbcb8bbf998",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM u517481501_b.users WHERE email = '{{ $json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "7371b9e7-da27-4b3f-bb86-757901e82fd4",
+      "name": "Buscar User",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        400,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "46c49582-8170-4e06-b0e3-20e932d737a0",
+      "name": "Juntar",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json[\"operacao\"] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "listar_categorias"
+            },
+            {
+              "value2": "listar_contas"
+            }
+          ]
+        }
+      },
+      "id": "d4afe4a7-ea04-4280-8c1b-beb1ed9cf853",
+      "name": "O quê?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, type, icon, color FROM u517481501_b.categories WHERE user_id = {{ $node[\"O quê?\"].json[\"id\"] }} AND type = '{{ $node[\"O quê?\"].json[\"filtro_tipo\"] }}';"
+      },
+      "id": "aad1c65c-639b-4588-80d5-811f4c4220aa",
+      "name": "Listar Categorias",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, type, bank_name, balance, currency FROM u517481501_b.accounts WHERE user_id = {{ $node[\"O quê?\"].json[\"id\"] }};"
+      },
+      "id": "ab4c88be-3287-470a-ac8b-836c2ab4a874",
+      "name": "Listar Contas",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Buscar User",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Juntar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User": {
+      "main": [
+        [
+          {
+            "node": "Juntar",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar": {
+      "main": [
+        [
+          {
+            "node": "O quê?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "O quê?": {
+      "main": [
+        [
+          {
+            "node": "Listar Categorias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Listar Contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

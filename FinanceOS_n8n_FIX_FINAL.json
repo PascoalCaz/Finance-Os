@@ -1,0 +1,156 @@
+{
+  "name": "FinanceOS - Fix Final (Merge & DB Corrigidos)",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "pascoalcaz@gmail.com"
+            },
+            {
+              "name": "tipo",
+              "value": "expense"
+            },
+            {
+              "name": "descricao",
+              "value": "Compra de Teste Dinâmica (Fix)"
+            }
+          ],
+          "number": [
+            {
+              "name": "valor",
+              "value": 2500
+            },
+            {
+              "name": "account_id",
+              "value": 1
+            },
+            {
+              "name": "category_id",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "16d99a0c-cef7-4127-9ab8-250837bfba56",
+      "name": "Input Webhook/Form",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM u517481501_b.users WHERE email = '{{ $node[\"Input Webhook/Form\"].json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "72d8db2b-6112-42ec-8f23-74ca248f59ea",
+      "name": "Buscar User ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        2592,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "c57a09ea-11a1-46f4-ad61-7be3124e23ca",
+      "name": "Juntar Dados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $json[\"id\"] }}, {{ $json[\"account_id\"] }}, {{ $json[\"category_id\"] }}, CURDATE(), {{ $json[\"valor\"] }}, '{{ $json[\"descricao\"] }}', '{{ $json[\"tipo\"] }}', NOW(), NOW());"
+      },
+      "id": "9c8a83d1-6463-463b-8cb6-426e1a4ae203",
+      "name": "Registrar Dinamicamente",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        3000,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = CASE WHEN '{{ $json[\"tipo\"] }}' = 'income' THEN balance + {{ $json[\"valor\"] }} ELSE balance - {{ $json[\"valor\"] }} END WHERE id = {{ $json[\"account_id\"] }} AND user_id = {{ $json[\"id\"] }};"
+      },
+      "id": "d09ce653-51d0-46e5-bac2-b5eb3807ff7a",
+      "name": "Atualizar Saldo (Seguro)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        112
+      ]
+    }
+  ],
+  "connections": {
+    "Input Webhook/Form": {
+      "main": [
+        [
+          {
+            "node": "Buscar User ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Juntar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User ID": {
+      "main": [
+        [
+          {
+            "node": "Juntar Dados",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Dados": {
+      "main": [
+        [
+          {
+            "node": "Registrar Dinamicamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Dinamicamente": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Saldo (Seguro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

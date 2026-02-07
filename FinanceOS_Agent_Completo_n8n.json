@@ -1,0 +1,398 @@
+{
+  "name": "FinanceOS - Agent Financeiro Completo",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        100,
+        336
+      ],
+      "id": "1c3d092a-1ab3-4dde-85b4-9d31794b4bb4",
+      "name": "Chat Trigger",
+      "webhookId": "financeos-agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "Você é o Assistente Financeiro do FinanceOS. Você pode registrar despesas e receitas.\n\nQuando o utilizador pedir para registrar uma transação, extraia:\n- tipo: 'expense' para despesa, 'income' para receita\n- valor: o montante numérico\n- descricao: descrição do gasto/receita\n- account_id: 1 para Carteira, 2 para Poupança (padrão: 1)\n- category_id: 1=Alimentação, 2=Transporte, 3=Lazer, 4=Saúde, 5=Educação (padrão: 1)\n\nO email do utilizador é sempre: pascoalcaz@gmail.com\n\nSempre responda em português e confirme a operação realizada."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        300,
+        336
+      ],
+      "id": "370ae2eb-e27d-4e3f-a751-9974d5a5f7bf",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        160,
+        560
+      ],
+      "id": "e9325483-ddac-4c15-a83f-e52a406abfe0",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "Ho2226DmuBKsKIDt",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        560
+      ],
+      "id": "f1567308-25b0-484f-accc-4c26bf306440",
+      "name": "Memory"
+    },
+    {
+      "parameters": {
+        "name": "registrar_transacao",
+        "description": "Registra uma transação financeira (despesa ou receita) no sistema. Use quando o utilizador quiser registar um gasto ou uma entrada de dinheiro.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tipo\": {\n      \"type\": \"string\",\n      \"description\": \"Tipo de transação: 'expense' para despesa ou 'income' para receita\"\n    },\n    \"valor\": {\n      \"type\": \"number\",\n      \"description\": \"Valor da transação em AOA\"\n    },\n    \"descricao\": {\n      \"type\": \"string\",\n      \"description\": \"Descrição da transação\"\n    },\n    \"account_id\": {\n      \"type\": \"number\",\n      \"description\": \"ID da conta: 1=Carteira, 2=Poupança\"\n    },\n    \"category_id\": {\n      \"type\": \"number\",\n      \"description\": \"ID da categoria: 1=Alimentação, 2=Transporte, 3=Lazer\"\n    }\n  },\n  \"required\": [\"tipo\", \"valor\", \"descricao\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        480,
+        560
+      ],
+      "id": "tool-transacao-001",
+      "name": "Tool: Registrar Transação"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM u517481501_b.users WHERE email = 'pascoalcaz@gmail.com' LIMIT 1;"
+      },
+      "id": "2e0bbdab-9a70-48b4-bf53-c0b688efaf4b",
+      "name": "Buscar User ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        672,
+        464
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json[\"tipo\"] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "expense"
+            },
+            {
+              "value2": "income"
+            }
+          ]
+        }
+      },
+      "id": "12c5244a-ad60-4162-8f23-dfa6a39bb00a",
+      "name": "Tipo?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        992,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $node[\"Tipo?\"].json[\"id\"] }}, {{ $node[\"Tipo?\"].json[\"account_id\"] }}, {{ $node[\"Tipo?\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Tipo?\"].json[\"valor\"] }}, '{{ $node[\"Tipo?\"].json[\"descricao\"] }}', 'expense', NOW(), NOW());"
+      },
+      "id": "0caca2dd-9e0e-4260-969a-54568716d90d",
+      "name": "Reg. Despesa",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        240
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO u517481501_b.transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $node[\"Tipo?\"].json[\"id\"] }}, {{ $node[\"Tipo?\"].json[\"account_id\"] }}, {{ $node[\"Tipo?\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Tipo?\"].json[\"valor\"] }}, '{{ $node[\"Tipo?\"].json[\"descricao\"] }}', 'income', NOW(), NOW());"
+      },
+      "id": "dbc1bf82-1a27-44db-a4a3-a5ed501b8c16",
+      "name": "Reg. Receita",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        448
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = balance - {{ $node[\"Tipo?\"].json[\"valor\"] }} WHERE id = {{ $node[\"Tipo?\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Tipo?\"].json[\"id\"] }};"
+      },
+      "id": "6df942f1-28c6-4427-8f0b-ed3dc385ea4b",
+      "name": "Subtrair Saldo",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        240
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE u517481501_b.accounts SET balance = balance + {{ $node[\"Tipo?\"].json[\"valor\"] }} WHERE id = {{ $node[\"Tipo?\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Tipo?\"].json[\"id\"] }};"
+      },
+      "id": "d6c50020-653e-4406-b35c-369c52046651",
+      "name": "Somar Saldo",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        448
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT balance FROM u517481501_b.accounts WHERE id = {{ $node[\"Tipo?\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Tipo?\"].json[\"id\"] }};"
+      },
+      "id": "3642672e-1c86-48ba-841c-1183ec752012",
+      "name": "Saldo Final",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        368
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "WjYUyKa7Eao3mZSX",
+          "name": "MySQL Finance Os"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "a780bac1-d317-4eae-abb3-2ae4c5eeaf6a",
+      "name": "Juntar Dados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        816,
+        368
+      ]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Registrar Transação": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Juntar Dados",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar User ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User ID": {
+      "main": [
+        [
+          {
+            "node": "Juntar Dados",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Dados": {
+      "main": [
+        [
+          {
+            "node": "Tipo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo?": {
+      "main": [
+        [
+          {
+            "node": "Reg. Despesa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reg. Receita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reg. Despesa": {
+      "main": [
+        [
+          {
+            "node": "Subtrair Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reg. Receita": {
+      "main": [
+        [
+          {
+            "node": "Somar Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subtrair Saldo": {
+      "main": [
+        [
+          {
+            "node": "Saldo Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Somar Saldo": {
+      "main": [
+        [
+          {
+            "node": "Saldo Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "122ce749ad5f4a9974fb262518126cb30007092d87ac43dd4bdfca8beaafaa6b"
+  }
+}

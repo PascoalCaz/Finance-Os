@@ -1,0 +1,124 @@
+{
+  "name": "FinanceOS - Identificação Dinâmica & Registo",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "seu_email@financeos.com"
+            },
+            {
+              "name": "tipo",
+              "value": "expense"
+            },
+            {
+              "name": "descricao",
+              "value": "Compra de Teste Dinámica"
+            }
+          ],
+          "number": [
+            {
+              "name": "valor",
+              "value": 250
+            },
+            {
+              "name": "account_id",
+              "value": 1
+            },
+            {
+              "name": "category_id",
+              "value": 1
+            }
+          ]
+        }
+      },
+      "id": "76e3d2a1-b8c9-4d2e-8f5a-3c1d9e2f4b5a",
+      "name": "Input Webhook/Form",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id FROM users WHERE email = '{{ $node[\"Input Webhook/Form\"].json[\"email\"] }}' LIMIT 1;"
+      },
+      "id": "e4f5a6b7-c8d9-4e1d-b2c3-d4e5f6g7h8i9",
+      "name": "Buscar User ID",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES ({{ $node[\"Buscar User ID\"].json[\"id\"] }}, {{ $node[\"Input Webhook/Form\"].json[\"account_id\"] }}, {{ $node[\"Input Webhook/Form\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Input Webhook/Form\"].json[\"valor\"] }}, '{{ $node[\"Input Webhook/Form\"].json[\"descricao\"] }}', '{{ $node[\"Input Webhook/Form\"].json[\"tipo\"] }}', NOW(), NOW());"
+      },
+      "id": "a1b2c3d4-e5f6-4g7h-8i9j-0k1l2m3n4o5p",
+      "name": "Registrar Dinamicamente",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE accounts SET balance = CASE WHEN '{{ $node[\"Input Webhook/Form\"].json[\"tipo\"] }}' = 'income' THEN balance + {{ $node[\"Input Webhook/Form\"].json[\"valor\"] }} ELSE balance - {{ $node[\"Input Webhook/Form\"].json[\"valor\"] }} END WHERE id = {{ $node[\"Input Webhook/Form\"].json[\"account_id\"] }} AND user_id = {{ $node[\"Buscar User ID\"].json[\"id\"] }};"
+      },
+      "id": "c3d4e5f6-a7b8-4c9d-d0e1-f2g3h4i5j6k7",
+      "name": "Atualizar Saldo (Seguro)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Input Webhook/Form": {
+      "main": [
+        [
+          {
+            "node": "Buscar User ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar User ID": {
+      "main": [
+        [
+          {
+            "node": "Registrar Dinamicamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Dinamicamente": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Saldo (Seguro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "name": "FinanceOS - Automação Hostinger (Corrigida)",
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "account_id",
+              "value": 1
+            },
+            {
+              "name": "category_id",
+              "value": 1
+            },
+            {
+              "name": "valor",
+              "value": 500
+            }
+          ],
+          "string": [
+            {
+              "name": "descricao",
+              "value": "Teste Automação Hostinger"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6f43e62-c31a-4d92-824c-1e24a4ea839e",
+      "name": "Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO transactions (user_id, account_id, category_id, date, amount, description, type, created_at, updated_at) VALUES (1, {{ $node[\"Input\"].json[\"account_id\"] }}, {{ $node[\"Input\"].json[\"category_id\"] }}, CURDATE(), {{ $node[\"Input\"].json[\"valor\"] }}, '{{ $node[\"Input\"].json[\"descricao\"] }}', 'expense', NOW(), NOW());"
+      },
+      "id": "7d9c1b8a-f5e4-4d2c-8a1b-3c4d5e6f7g8h",
+      "name": "Registrar Transação",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE accounts SET balance = balance - {{ $node[\"Input\"].json[\"valor\"] }} WHERE id = {{ $node[\"Input\"].json[\"account_id\"] }};"
+      },
+      "id": "a1b2c3d4-e5f6-4a1b-8c9d-0e1f2g3h4i5j",
+      "name": "Atualizar Saldo",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Input": {
+      "main": [
+        [
+          {
+            "node": "Registrar Transação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Transação": {
+      "main": [
+        [
+          {
+            "node": "Atualizar Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

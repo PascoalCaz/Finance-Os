@@ -1,0 +1,139 @@
+{
+  "name": "FinanceOS - AI Agent Principal",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        200,
+        336
+      ],
+      "id": "1c3d092a-1ab3-4dde-85b4-9d31794b4bb4",
+      "name": "Chat Trigger",
+      "webhookId": "financeos-agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "Você é o Assistente Financeiro do FinanceOS. Você pode registrar despesas e receitas usando a tool 'registrar_transacao'.\n\nQuando o utilizador pedir para registrar uma transação, extraia:\n- email: sempre 'pascoalcaz@gmail.com'\n- tipo: 'expense' para despesa, 'income' para receita\n- valor: o montante numérico\n- descricao: descrição do gasto/receita\n- account_id: 1 para Carteira, 2 para Poupança (padrão: 1)\n- category_id: 1=Alimentação, 2=Transporte, 3=Lazer, 4=Saúde, 5=Educação (padrão: 1)\n\nSempre responda em português e confirme a operação realizada."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        450,
+        336
+      ],
+      "id": "370ae2eb-e27d-4e3f-a751-9974d5a5f7bf",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        300,
+        560
+      ],
+      "id": "e9325483-ddac-4c15-a83f-e52a406abfe0",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "Ho2226DmuBKsKIDt",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        450,
+        560
+      ],
+      "id": "f1567308-25b0-484f-accc-4c26bf306440",
+      "name": "Memory"
+    },
+    {
+      "parameters": {
+        "name": "registrar_transacao",
+        "description": "Registra uma transação financeira (despesa ou receita) no sistema. Use quando o utilizador quiser registar um gasto ou uma entrada de dinheiro.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "SUBSTITUIR_PELO_ID_DO_WORKFLOW_TOOL"
+        },
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"email\": {\n      \"type\": \"string\",\n      \"description\": \"Email do utilizador (sempre pascoalcaz@gmail.com)\"\n    },\n    \"tipo\": {\n      \"type\": \"string\",\n      \"description\": \"Tipo de transação: 'expense' para despesa ou 'income' para receita\"\n    },\n    \"valor\": {\n      \"type\": \"number\",\n      \"description\": \"Valor da transação em AOA\"\n    },\n    \"descricao\": {\n      \"type\": \"string\",\n      \"description\": \"Descrição da transação\"\n    },\n    \"account_id\": {\n      \"type\": \"number\",\n      \"description\": \"ID da conta: 1=Carteira, 2=Poupança\"\n    },\n    \"category_id\": {\n      \"type\": \"number\",\n      \"description\": \"ID da categoria: 1=Alimentação, 2=Transporte, 3=Lazer\"\n    }\n  },\n  \"required\": [\"email\", \"tipo\", \"valor\", \"descricao\", \"account_id\", \"category_id\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        600,
+        560
+      ],
+      "id": "tool-transacao-001",
+      "name": "Tool: Registrar Transação"
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Registrar Transação": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "122ce749ad5f4a9974fb262518126cb30007092d87ac43dd4bdfca8beaafaa6b"
+  }
+}
